@@ -1,0 +1,38 @@
+# infra/05-app-java.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-java-svc
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080 # Service가 8080으로 받음
+      targetPort: 8080 # Pod의 8080으로 전달
+  selector:
+    app: backend-java
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-java
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend-java
+  template:
+    metadata:
+      labels:
+        app: backend-java
+    spec:
+      containers:
+        - name: backend-java
+          image: trading-manage-app/backend-java:latest
+          imagePullPolicy: IfNotPresent # 로컬 이미지를 사용하도록 설정
+          ports:
+            - containerPort: 8080
+          envFrom: # ConfigMap과 Secret의 모든 키-값 쌍을 환경 변수로 주입
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
