@@ -20,31 +20,35 @@ import {
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { usePage } from "@/contexts/PageContext"
+import { cn } from "@/lib/utils"
 
 const menuItems = [
   {
     title: "대시보드",
-    url: "/",
+    page: "dashboard" as const,
     icon: Home,
   },
   {
     title: "사전 분석",
-    url: "/analysis",
+    page: "analysis" as const,
     icon: Eye,
   },
   {
     title: "매매 일지",
-    url: "/journal",
+    page: "journal" as const,
     icon: BookOpen,
   },
   {
     title: "성과 분석", 
-    url: "/performance",
+    page: "performance" as const,
     icon: BarChart3,
   },
 ]
 
 export function AppSidebar() {
+  const { activePage, setActivePage } = usePage()
+
   return (
     <Sidebar className="border-r">
       <SidebarHeader className="border-b px-6 py-4">
@@ -66,13 +70,16 @@ export function AppSidebar() {
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <a 
-                      href={item.url}
-                      className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                    <button 
+                      onClick={() => setActivePage(item.page)}
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground w-full text-left",
+                        activePage === item.page && "bg-accent text-accent-foreground"
+                      )}
                     >
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
-                    </a>
+                    </button>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
