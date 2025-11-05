@@ -1,3 +1,4 @@
+// src/components/layout/app-sidebar.tsx
 import { 
   Sidebar, 
   SidebarContent, 
@@ -20,34 +21,41 @@ import {
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { usePage } from "@/contexts/PageContext"
+import { useAppDispatch, useAppSelector } from "@/store/hooks" // ✅ Redux hooks
+import { setActivePage, ActivePage } from "@/store/slices/pageSlice" // ✅ Redux action
 import { cn } from "@/lib/utils"
 
 const menuItems = [
   {
     title: "대시보드",
-    page: "dashboard" as const,
+    page: "dashboard" as ActivePage,
     icon: Home,
   },
   {
     title: "사전 분석",
-    page: "analysis" as const,
+    page: "analysis" as ActivePage,
     icon: Eye,
   },
   {
     title: "매매 일지",
-    page: "journal" as const,
+    page: "journal" as ActivePage,
     icon: BookOpen,
   },
   {
     title: "성과 분석", 
-    page: "performance" as const,
+    page: "performance" as ActivePage,
     icon: BarChart3,
   },
 ]
 
 export function AppSidebar() {
-  const { activePage, setActivePage } = usePage()
+  const dispatch = useAppDispatch() // ✅ Redux dispatch
+  const activePage = useAppSelector((state) => state.page.activePage) // ✅ Redux selector
+  const pageHistory = useAppSelector((state) => state.page.pageHistory)
+
+  const handlePageChange = (page: ActivePage) => {
+    dispatch(setActivePage(page)) // ✅ Redux action 디스패치
+  }
 
   return (
     <Sidebar className="border-r">
@@ -71,7 +79,7 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <button 
-                      onClick={() => setActivePage(item.page)}
+                      onClick={() => handlePageChange(item.page)} // ✅ Redux 액션 호출
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground w-full text-left",
                         activePage === item.page && "bg-accent text-accent-foreground"
@@ -86,6 +94,17 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        
+        {/* 페이지 히스토리 표시 (개발용) */}
+        {process.env.NODE_ENV === 'development' && (
+          <SidebarGroup>
+            <div className="px-3 py-2">
+              <div className="text-xs text-muted-foreground">
+                History: {pageHistory.slice(-3).join(' → ')}
+              </div>
+            </div>
+          </SidebarGroup>
+        )}
       </SidebarContent>
       
       <SidebarFooter className="border-t p-4">

@@ -1,12 +1,14 @@
 // src/App.tsx
-import { PageProvider, usePage } from './contexts/PageContext'
+import { Provider } from 'react-redux'
+import { store } from './store'
 import { MainLayout } from './components/layout/main-layout'
 import { Dashboard } from './pages/Dashboard'
 import { Analysis } from './pages/Analysis'
+import { useAppSelector } from './store/hooks'
 import './index.css'
 
 function AppContent() {
-  const { activePage } = usePage()
+  const activePage = useAppSelector((state) => state.page.activePage)
 
   const renderPage = () => {
     switch (activePage) {
@@ -75,9 +77,9 @@ function AppContent() {
 
 function App() {
   return (
-    <PageProvider>
+    <Provider store={store}>
       <AppContent />
-    </PageProvider>
+    </Provider>
   )
 }
 
