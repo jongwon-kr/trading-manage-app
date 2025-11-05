@@ -51,7 +51,6 @@ const menuItems = [
 export function AppSidebar() {
   const dispatch = useAppDispatch() // ✅ Redux dispatch
   const activePage = useAppSelector((state) => state.page.activePage) // ✅ Redux selector
-  const pageHistory = useAppSelector((state) => state.page.pageHistory)
 
   const handlePageChange = (page: ActivePage) => {
     dispatch(setActivePage(page)) // ✅ Redux action 디스패치
@@ -94,17 +93,6 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        
-        {/* 페이지 히스토리 표시 (개발용) */}
-        {process.env.NODE_ENV === 'development' && (
-          <SidebarGroup>
-            <div className="px-3 py-2">
-              <div className="text-xs text-muted-foreground">
-                History: {pageHistory.slice(-3).join(' → ')}
-              </div>
-            </div>
-          </SidebarGroup>
-        )}
       </SidebarContent>
       
       <SidebarFooter className="border-t p-4">

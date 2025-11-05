@@ -1,6 +1,15 @@
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { MarketData, PreMarketAnalysis } from "@/types/analysis";
-import { Trade, TradingJournalStats } from "@/types/trading"; // ✅ 추가
+import { createSlice, PayloadAction } from '@reduxjs/toolkit'
+import { MarketData, PreMarketAnalysis } from '@/types/analysis'
+import { Trade, TradingJournalStats } from '@/types/trading'
+// ✅ 누락된 성과 분석 타입들 추가
+import { 
+  PerformanceMetrics, 
+  PerformanceChart, 
+  MonthlyReturns, 
+  SectorAnalysis, 
+  StrategyPerformance, 
+  RiskMetrics 
+} from '@/types/performance'
 
 interface TradingState {
   marketData: MarketData[];

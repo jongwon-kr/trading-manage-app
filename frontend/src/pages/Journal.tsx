@@ -3,35 +3,25 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { 
-  BookOpen, 
-  Plus, 
-  TrendingUp, 
+import {
+  BookOpen,
+  Plus,
+  TrendingUp,
   TrendingDown,
   DollarSign,
   Target,
-  Calendar,
   BarChart3,
   Edit,
-  Trash2,
   Eye,
   Filter
 } from "lucide-react"
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
-import { 
-  setTrades, 
-  addTrade, 
-  updateTrade, 
-  deleteTrade,
+import {
+  setTrades,
   setJournalStats,
   setJournalFilters,
-  closeTrade
 } from '@/store/slices/tradingSlice'
 import { mockTrades, mockJournalStats } from '@/lib/mock-trading-data'
 import { Trade } from '@/types/trading'
@@ -39,13 +29,12 @@ import { Trade } from '@/types/trading'
 export function Journal() {
   const dispatch = useAppDispatch()
   const [isNewTradeOpen, setIsNewTradeOpen] = useState(false)
-  const [editingTrade, setEditingTrade] = useState<Trade | null>(null)
 
   // Redux state
-  const { 
-    trades, 
-    journalStats, 
-    journalFilters 
+  const {
+    trades,
+    journalStats,
+    journalFilters
   } = useAppSelector((state) => state.trading)
 
   // 컴포넌트 마운트 시 초기 데이터 로드
@@ -83,23 +72,23 @@ export function Journal() {
               <span className="font-semibold text-lg">{trade.symbol}</span>
               <span className="text-sm text-muted-foreground">{trade.name}</span>
             </div>
-            <Badge 
+            <Badge
               variant={trade.type === 'long' ? 'default' : 'destructive'}
               className="flex items-center gap-1"
             >
               {trade.type === 'long' ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
               {trade.type.toUpperCase()}
             </Badge>
-            <Badge 
-              variant={trade.status === 'open' ? 'secondary' : 
-                       trade.status === 'closed' ? 'outline' : 'destructive'}
+            <Badge
+              variant={trade.status === 'open' ? 'secondary' :
+                trade.status === 'closed' ? 'outline' : 'destructive'}
             >
-              {trade.status === 'open' ? '진행중' : 
-               trade.status === 'closed' ? '종료' : '대기'}
+              {trade.status === 'open' ? '진행중' :
+                trade.status === 'closed' ? '종료' : '대기'}
             </Badge>
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setEditingTrade(trade)}>
+             <Button variant="ghost" size="sm" onClick={() => console.log('Edit:', trade.id)}>
               <Edit className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="sm">
@@ -123,7 +112,7 @@ export function Journal() {
             </p>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-sm text-muted-foreground">수량</p>
@@ -131,9 +120,8 @@ export function Journal() {
           </div>
           <div>
             <p className="text-sm text-muted-foreground">수익률</p>
-            <p className={`font-semibold ${
-              (trade.returnPercentage || 0) > 0 ? 'text-green-600' : 'text-red-600'
-            }`}>
+            <p className={`font-semibold ${(trade.returnPercentage || 0) > 0 ? 'text-green-600' : 'text-red-600'
+              }`}>
               {trade.returnPercentage?.toFixed(2)}%
             </p>
           </div>
@@ -148,10 +136,9 @@ export function Journal() {
             <p className="text-sm text-muted-foreground">
               {trade.status === 'closed' ? '손익' : '평가손익'}
             </p>
-            <p className={`font-semibold ${
-              (trade.status === 'closed' ? trade.realizedPnL! : trade.unrealizedPnL!) > 0 ? 
-              'text-green-600' : 'text-red-600'
-            }`}>
+            <p className={`font-semibold ${(trade.status === 'closed' ? trade.realizedPnL! : trade.unrealizedPnL!) > 0 ?
+                'text-green-600' : 'text-red-600'
+              }`}>
               {formatCurrency(trade.status === 'closed' ? trade.realizedPnL! : trade.unrealizedPnL!)}
             </p>
           </div>
@@ -271,22 +258,22 @@ export function Journal() {
       {/* 필터 */}
       <div className="flex gap-4">
         <div className="flex gap-2">
-          <Button 
-            variant={journalFilters.status === 'all' ? 'default' : 'outline'} 
+          <Button
+            variant={journalFilters.status === 'all' ? 'default' : 'outline'}
             size="sm"
             onClick={() => dispatch(setJournalFilters({ status: 'all' }))}
           >
             전체
           </Button>
-          <Button 
-            variant={journalFilters.status === 'open' ? 'default' : 'outline'} 
+          <Button
+            variant={journalFilters.status === 'open' ? 'default' : 'outline'}
             size="sm"
             onClick={() => dispatch(setJournalFilters({ status: 'open' }))}
           >
             진행중
           </Button>
-          <Button 
-            variant={journalFilters.status === 'closed' ? 'default' : 'outline'} 
+          <Button
+            variant={journalFilters.status === 'closed' ? 'default' : 'outline'}
             size="sm"
             onClick={() => dispatch(setJournalFilters({ status: 'closed' }))}
           >
@@ -294,16 +281,16 @@ export function Journal() {
           </Button>
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant={journalFilters.type === 'long' ? 'default' : 'outline'} 
+          <Button
+            variant={journalFilters.type === 'long' ? 'default' : 'outline'}
             size="sm"
             onClick={() => dispatch(setJournalFilters({ type: 'long' }))}
           >
             <TrendingUp className="h-4 w-4 mr-1" />
             매수
           </Button>
-          <Button 
-            variant={journalFilters.type === 'short' ? 'default' : 'outline'} 
+          <Button
+            variant={journalFilters.type === 'short' ? 'default' : 'outline'}
             size="sm"
             onClick={() => dispatch(setJournalFilters({ type: 'short' }))}
           >
@@ -324,7 +311,7 @@ export function Journal() {
             거래 기록 ({filteredTrades.length})
           </h3>
         </div>
-        
+
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredTrades.map((trade) => (
             <TradeCard key={trade.id} trade={trade} />

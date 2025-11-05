@@ -27,12 +27,11 @@ import {
   updateStockPrice 
 } from '@/store/slices/tradingSlice'
 import { mockPreMarketAnalysis, mockMarketData } from '@/lib/mock-data'
-import { MarketData, PreMarketAnalysis } from '@/types/analysis'
+import { MarketData } from '@/types/analysis'
 
 export function Analysis() {
   const dispatch = useAppDispatch()
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedSector, setSelectedSector] = useState<string>('all')
 
   // Redux state에서 데이터 가져오기
   const { 

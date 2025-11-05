@@ -58,7 +58,7 @@ function AppContent() {
   }
 
   return (
-    <MainLayout 
+    <MainLayout
       title={getPageTitle()}
       subtitle={getPageSubtitle()}
     >

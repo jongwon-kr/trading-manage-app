@@ -1,5 +1,5 @@
 // src/pages/Performance.tsx
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -10,18 +10,15 @@ import {
   TrendingUp, 
   TrendingDown,
   Target,
-  DollarSign,
   Activity,
   AlertTriangle,
   Award,
-  Calendar,
   PieChart,
   LineChart
 } from "lucide-react"
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { 
   setPerformanceMetrics,
-  setPerformanceChart,
   setMonthlyReturns,
   setSectorAnalysis,
   setStrategyPerformance,
@@ -30,7 +27,6 @@ import {
 } from '@/store/slices/tradingSlice'
 import { 
   mockPerformanceMetrics,
-  mockPerformanceChart,
   mockMonthlyReturns,
   mockSectorAnalysis,
   mockStrategyPerformance,
@@ -43,7 +39,6 @@ export function Performance() {
   // Redux state
   const { 
     performanceMetrics,
-    performanceChart,
     monthlyReturns,
     sectorAnalysis,
     strategyPerformance,
@@ -55,7 +50,6 @@ export function Performance() {
   // 컴포넌트 마운트 시 초기 데이터 로드
   useEffect(() => {
     dispatch(setPerformanceMetrics(mockPerformanceMetrics))
-    dispatch(setPerformanceChart(mockPerformanceChart))
     dispatch(setMonthlyReturns(mockMonthlyReturns))
     dispatch(setSectorAnalysis(mockSectorAnalysis))
     dispatch(setStrategyPerformance(mockStrategyPerformance))

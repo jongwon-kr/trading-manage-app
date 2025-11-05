@@ -1,5 +1,6 @@
+/* src/index.css */
 @tailwind base;
-@tailwind components; 
+@tailwind components;
 @tailwind utilities;
 
 :root {
@@ -23,6 +24,11 @@
   --input: 240 5.9% 90%;
   --ring: 240 5.9% 10%;
   --radius: 0.5rem;
+
+  /* 트레이딩 전용 CSS 변수 */
+  --trading-green: 142 76% 36%;
+  --trading-red: 0 84.2% 60.2%;
+  --chart-grid: 240 4.8% 95.9%;
 }
 
 .dark {
@@ -45,6 +51,11 @@
   --border: 240 3.7% 15.9%;
   --input: 240 3.7% 15.9%;
   --ring: 240 4.9% 83.9%;
+
+  /* 다크 모드 트레이딩 색상 */
+  --trading-green: 142 76% 36%;
+  --trading-red: 0 62.8% 30.6%;
+  --chart-grid: 240 3.7% 15.9%;
 }
 
 @layer base {
@@ -52,26 +63,115 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
   }
-  :root {
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+}
+
+@layer components {
+  /* 트레이딩 관련 커스텀 컴포넌트 스타일 */
+  .trading-card {
+    @apply bg-card text-card-foreground rounded-lg border shadow-sm;
   }
-  .dark {
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+  
+  .trading-metric-positive {
+    @apply text-green-600 dark:text-green-400;
+  }
+  
+  .trading-metric-negative {
+    @apply text-red-600 dark:text-red-400;
+  }
+  
+  .trading-badge-long {
+    @apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200;
+  }
+  
+  .trading-badge-short {
+    @apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200;
+  }
+}
+
+@layer utilities {
+  /* 커스텀 유틸리티 클래스 */
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* 애니메이션 */
+@keyframes pulse-green {
+  0%, 100% {
+    @apply bg-green-500;
+  }
+  50% {
+    @apply bg-green-400;
+  }
+}
+
+@keyframes pulse-red {
+  0%, 100% {
+    @apply bg-red-500;
+  }
+  50% {
+    @apply bg-red-400;
+  }
+}
+
+.animate-pulse-green {
+  animation: pulse-green 2s infinite;
+}
+
+.animate-pulse-red {
+  animation: pulse-red 2s infinite;
+}
+
+/* 차트 관련 스타일 */
+.trading-chart-container {
+  @apply relative w-full h-full bg-card rounded-lg border;
+}
+
+.trading-chart-placeholder {
+  @apply flex items-center justify-center h-full text-muted-foreground;
+}
+
+/* 반응형 그리드 */
+.trading-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.trading-grid-2 {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+}
+
+/* 모바일 최적화 */
+@media (max-width: 640px) {
+  .trading-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .trading-grid-2 {
+    grid-template-columns: 1fr;
   }
 }
