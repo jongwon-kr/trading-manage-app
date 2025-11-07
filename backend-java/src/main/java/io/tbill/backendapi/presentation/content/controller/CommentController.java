@@ -33,7 +33,7 @@ public class CommentController {
         CommentDto.Info info = commentService.createComment(
                 contentId,
                 authorEmail,
-                request.getContent()
+                request.getComment()
         );
 
         return ResponseEntity.status(HttpStatus.CREATED).body(new CommentApiDto.Response(info));
@@ -54,7 +54,7 @@ public class CommentController {
         CommentDto.Info info = commentService.updateComment(
                 commentId,
                 authorEmail,
-                request.getContent()
+                request.getComment()
         );
 
         return ResponseEntity.ok(new CommentApiDto.Response(info));

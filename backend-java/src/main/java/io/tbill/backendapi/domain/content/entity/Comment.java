@@ -26,14 +26,14 @@ public class Comment extends BaseTimeEntity {
     @Column(name = "author_email", nullable = false)
     private String authorEmail;
 
-    @Column(name = "content", columnDefinition = "TEXT", nullable = false)
-    private String content;
+    @Column(name = "comment", columnDefinition = "TEXT", nullable = false)
+    private String comment;
 
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted;
 
     @Builder
-    public Comment(Content content, String authorEmail, String content) {
+    public Comment(Content content, String authorEmail, String comment) {
         this.content = content;
         this.authorEmail = authorEmail;
         this.content = content;
@@ -41,8 +41,8 @@ public class Comment extends BaseTimeEntity {
     }
 
     // (편의 메서드) 수정
-    public void update(String newContent) {
-        this.content = newContent;
+    public void update(String newComment) {
+        this.comment = newComment;
     }
 
     // (편의 메서드) 소프트 삭제

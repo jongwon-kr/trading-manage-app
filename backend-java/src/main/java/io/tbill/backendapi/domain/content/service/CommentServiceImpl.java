@@ -36,7 +36,7 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional
-    public CommentDto.Info createComment(Long contentId, String authorEmail, String contentBody) {
+    public CommentDto.Info createComment(Long contentId, String authorEmail, String commentBody) {
         // 1. 부모 게시글이 (삭제되지 않고) 존재하는지 확인
         Content content = contentRepository.findByIdNotDeleted(contentId)
                 .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다. ID: " + contentId));
@@ -45,7 +45,7 @@ public class CommentServiceImpl implements CommentService {
         CommentDto.CreateCommand command = CommentDto.CreateCommand.builder()
                 .content(content)
                 .authorEmail(authorEmail)
-                .contentBody(contentBody)
+                .commentBody(commentBody)
                 .build();
 
         // 3. 엔티티 변환 및 저장

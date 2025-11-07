@@ -17,7 +17,7 @@ public class CommentApiDto {
     @NoArgsConstructor // (선택)
     public static class CreateOrUpdateRequest {
         // (Validation 추가 필요: @NotBlank)
-        private String content;
+        private String comment;
     }
 
     /**
@@ -27,13 +27,13 @@ public class CommentApiDto {
     public static class Response {
         private final Long id;
         private final String authorEmail;
-        private final String content;
+        private final String comment;
         private final LocalDateTime createdAt;
 
         public Response(CommentDto.Info info) {
             this.id = info.getId();
             this.authorEmail = info.getAuthorEmail();
-            this.content = info.getContentBody();
+            this.comment = info.getCommentBody();
             this.createdAt = info.getCreatedAt();
         }
     }

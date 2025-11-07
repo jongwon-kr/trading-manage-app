@@ -16,20 +16,20 @@ public class CommentDto {
     public static class CreateCommand {
         private final Content content; // 부모 게시글
         private final String authorEmail;
-        private final String contentBody;
+        private final String commentBody;
 
         @Builder
-        public CreateCommand(Content content, String authorEmail, String contentBody) {
+        public CreateCommand(Content content, String authorEmail, String commentBody) {
             this.content = content;
             this.authorEmail = authorEmail;
-            this.contentBody = contentBody;
+            this.commentBody = commentBody;
         }
 
         public Comment toEntity() {
             return Comment.builder()
                     .content(this.content)
                     .authorEmail(this.authorEmail)
-                    .content(this.contentBody)
+                    .comment(this.commentBody)
                     .build();
         }
     }
@@ -41,13 +41,13 @@ public class CommentDto {
     public static class Info {
         private final Long id;
         private final String authorEmail;
-        private final String contentBody;
+        private final String commentBody;
         private final LocalDateTime createdAt;
 
         public Info(Comment comment) {
             this.id = comment.getId();
             this.authorEmail = comment.getAuthorEmail();
-            this.contentBody = comment.getContent();
+            this.commentBody = comment.getComment();
             this.createdAt = comment.getCreatedAt();
         }
 
