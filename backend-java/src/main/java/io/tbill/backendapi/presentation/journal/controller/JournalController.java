@@ -2,6 +2,7 @@ package io.tbill.backendapi.presentation.journal.controller;
 
 import io.tbill.backendapi.domain.journal.dto.JournalDto;
 import io.tbill.backendapi.domain.journal.service.JournalService;
+import io.tbill.backendapi.global.utils.auth.AuthUtils;
 import io.tbill.backendapi.presentation.journal.dto.JournalApiDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -10,15 +11,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
-
-// (임시) 현재 인증된 사용자 이메일을 가져오는 헬퍼
-// (개선) Spring Security의 @AuthenticationPrincipal 사용
-class AuthHelper {
-    public static String getCurrentUserEmail() {
-        // (필수) Spring Security 연동 후 실제 사용자 이메일 반환 로직 구현
-        return "testuser@example.com";
-    }
-}
 
 @RestController
 @RequiredArgsConstructor
@@ -36,7 +28,7 @@ public class JournalController {
             @RequestBody JournalApiDto.CreateRequest request // 1. Presentation DTO로 받음
     ) {
         // (필수) Spring Security 등에서 현재 인증된 사용자 Email을 가져와야 함
-        String currentUserEmail = AuthHelper.getCurrentUserEmail();
+        String currentUserEmail = AuthUtils.getCurrentUserEmail();
 
         // 2. Presentation DTO -> Domain DTO(Command) 변환 (이메일 주입)
         JournalDto.CreateCommand command = request.toCommand(currentUserEmail);
@@ -56,7 +48,7 @@ public class JournalController {
      */
     @GetMapping
     public ResponseEntity<List<JournalApiDto.JournalResponse>> getMyJournals() {
-        String currentUserEmail = AuthHelper.getCurrentUserEmail();
+        String currentUserEmail = AuthUtils.getCurrentUserEmail();
 
         List<JournalDto.JournalInfo> journalInfos = journalService.getJournalsByUserEmail(currentUserEmail);
 
@@ -75,7 +67,7 @@ public class JournalController {
     public ResponseEntity<JournalApiDto.JournalResponse> getJournal(
             @PathVariable Long journalId
     ) {
-        String currentUserEmail = AuthHelper.getCurrentUserEmail();
+        String currentUserEmail = AuthUtils.getCurrentUserEmail();
 
         JournalDto.JournalInfo journalInfo = journalService.getJournalById(journalId, currentUserEmail);
 
