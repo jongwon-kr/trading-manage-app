@@ -1,6 +1,7 @@
 spring:
   application:
     name: tbill-backend-api
+
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:local}
 
@@ -29,12 +30,6 @@ spring:
         enabled: true
       liveness-state:
         enabled: true
-
-springdoc:
-  api-docs:
-    path: /v3/api-docs
-  swagger-ui:
-    config-url: /api/java/v3/api-docs/swagger-config
 
 jwt:
   secret: ${JWT_SECRET}
