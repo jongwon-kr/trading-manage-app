@@ -8,3 +8,5 @@ data:
   DB_POSTGRES_PORT: "5432"
   DB_POSTGRES_DBNAME: "postgres" # 사용할 DB 이름
   DB_POSTGRES_USER: "postgres" # 기본 관리자 유저
+  REDIS_HOST: "redis-svc"
+  REDIS_PORT: "6379"
