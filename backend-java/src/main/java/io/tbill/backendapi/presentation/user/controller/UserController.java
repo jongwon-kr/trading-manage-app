@@ -17,9 +17,9 @@ public class UserController {
 
     /**
      * 회원 가입 API
-     * [POST] /api/users
+     * [POST] /api/users/sign-up
      */
-    @PostMapping
+    @PostMapping("/sign-up") // (경로 수정: /sign-up)
     public ResponseEntity<UserApiDto.UserResponse> signUp(
             @RequestBody UserApiDto.SignUpRequest request // 1. Presentation DTO로 받음
     ) {
@@ -36,18 +36,16 @@ public class UserController {
     }
 
     /**
-     * 사용자 정보 조회 API
-     * [GET] /api/users/{userId}
+     * 사용자 정보 조회 API (인증 필요)
+     * [GET] /api/users/me
+     * (예시: 인증된 사용자 본인 정보 조회)
      */
-    @GetMapping("/{userId}")
-    public ResponseEntity<UserApiDto.UserResponse> getUser(@PathVariable Long userId) {
-
-        // 1. Domain Service 호출
-        UserDto.UserInfo userInfo = userService.getUserById(userId);
-
-        // 2. Domain DTO(Info) -> Presentation DTO(Response)로 변환
-        UserApiDto.UserResponse response = new UserApiDto.UserResponse(userInfo);
-
-        return ResponseEntity.ok(response);
-    }
+    // @GetMapping("/me")
+    // @PreAuthorize("isAuthenticated()") // (예시) 인증된 사용자만
+    // public ResponseEntity<UserApiDto.UserResponse> getMyInfo(
+    //         @AuthenticationPrincipal CustomUserDetails userDetails
+    // ) {
+    //     UserDto.UserInfo userInfo = userService.getUserById(userDetails.getUser().getId());
+    //     return ResponseEntity.ok(new UserApiDto.UserResponse(userInfo));
+    // }
 }

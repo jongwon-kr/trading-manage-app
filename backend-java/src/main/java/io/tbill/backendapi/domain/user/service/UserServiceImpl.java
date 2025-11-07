@@ -4,16 +4,17 @@ import io.tbill.backendapi.domain.user.dto.UserDto;
 import io.tbill.backendapi.domain.user.entity.User;
 import io.tbill.backendapi.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class UserServiceImpl implements UserService{
+@RequiredArgsConstructor
+public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
-    // private final PasswordEncoder passwordEncoder; // (보안)
+    private final PasswordEncoder passwordEncoder;
 
     /**
      * 회원 가입
@@ -25,10 +26,10 @@ public class UserServiceImpl implements UserService{
             throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
         }
 
-        // (보안) 비밀번호 암호화
-        // String encodedPassword = passwordEncoder.encode(command.getPassword());
+        // (수정) 비밀번호 암호화
+        String encodedPassword = passwordEncoder.encode(command.getPassword());
 
-        User user = command.toEntity(); // DTO -> Entity (암호화 로직은 toEntity 내부나 여기서 처리)
+        User user = command.toEntity(encodedPassword); // 암호화된 비밀번호로 Entity 생성
 
         User savedUser = userRepository.save(user);
 
@@ -42,6 +43,7 @@ public class UserServiceImpl implements UserService{
     public UserDto.UserInfo getUserById(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
         return UserDto.UserInfo.from(user);
     }
 }

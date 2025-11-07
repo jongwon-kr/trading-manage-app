@@ -1,6 +1,6 @@
 package io.tbill.backendapi.domain.user.dto;
 
-import io.tbill.backendapi.domain.user.entity.User;
+import io.tbill.backendapi.domain.user.entity.User; // (경로 수정)
 import lombok.Builder;
 import lombok.Getter;
 
@@ -13,7 +13,7 @@ public class UserDto {
     public static class SignUpCommand {
         private final String username;
         private final String email;
-        private final String password;
+        private final String password; // (원시 비밀번호)
 
         @Builder
         public SignUpCommand(String username, String email, String password) {
@@ -22,12 +22,12 @@ public class UserDto {
             this.password = password;
         }
 
-        public User toEntity() {
-            // 실제로는 여기서 PasswordEncoder를 통해 암호화 필요
+        // (수정) 암호화된 비밀번호를 받아 Entity 생성
+        public User toEntity(String encodedPassword) {
             return User.builder()
                     .username(this.username)
                     .email(this.email)
-                    .password(this.password)
+                    .password(encodedPassword) // 암호화된 비밀번호 저장
                     .build();
         }
     }

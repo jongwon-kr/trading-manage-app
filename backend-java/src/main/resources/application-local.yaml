@@ -1,20 +1,45 @@
-spring:
-  datasource:
-    url: jdbc:postgresql://${DB_POSTGRES_HOST:localhost}:${DB_POSTGRES_PORT:5432}/${DB_POSTGRES_DBNAME:tbill_dev_db}
-    username: ${DB_POSTGRES_USER:local_user}
-    password: ${POSTGRES_PASSWORD:local_password}
-    driver-class-name: org.postgresql.Driver
 
+spring:
+  # ========================================
+  # DB (로컬용)
+  # ========================================
+  datasource:
+    url: jdbc:postgresql://${DB_POSTGRES_HOST:localhost}:${DB_POSTGRES_PORT:5432}/${DB_POSTGRES_DBNAME:postgres}
+    username: ${DB_POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:1234} # .env의 값 또는 '1234'
+
+  # ========================================
+  # JPA (로컬용)
+  # ========================================
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: update # (개발용) DB 자동 업데이트
+    show-sql: true # (개발용) SQL 로그 활성화
     properties:
       hibernate:
         format_sql: true
 
+  # ========================================
+  # REDIS (로컬용)
+  # ========================================
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:1234} # .env의 값 또는 '1234'
+
+# ========================================
+# 로깅 (로컬용)
+# ========================================
 logging:
   level:
+    # (개발용) SQL 로그 상세 보기
     org.hibernate.SQL: DEBUG
     org.hibernate.orm.jdbc.bind: TRACE
+
+# ========================================
+# Springdoc (Swagger) - (로컬용)
+# ========================================
+springdoc:
+  swagger-ui:
+    enabled: true # (개발용) Swagger UI 활성화

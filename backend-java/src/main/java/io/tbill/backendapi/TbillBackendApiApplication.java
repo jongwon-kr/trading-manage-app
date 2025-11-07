@@ -1,23 +1,24 @@
 package io.tbill.backendapi;
 
-import io.github.cdimascio.dotenv.Dotenv; // 1. import
+import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
+@EnableJpaAuditing
 @SpringBootApplication
 public class TbillBackendApiApplication {
 
     public static void main(String[] args) {
-
-        // 환경 변수 로드
         Dotenv dotenv = Dotenv.configure()
                 .ignoreIfMissing()
                 .load();
 
-        dotenv.entries().forEach(entry ->
-                System.setProperty(entry.getKey(), entry.getValue())
-        );
+        dotenv.entries().forEach(entry -> {
+            System.setProperty(entry.getKey(), entry.getValue());
+        });
 
         SpringApplication.run(TbillBackendApiApplication.class, args);
     }
+
 }
