@@ -7,6 +7,7 @@ export interface Trade {
   entryDate: string
   exitDate?: string
   entryPrice: number
+  stopLoss: number
   exitPrice?: number
   quantity: number
   strategy: string

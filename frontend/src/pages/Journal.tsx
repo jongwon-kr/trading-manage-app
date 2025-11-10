@@ -3,7 +3,12 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle 
+} from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
 import {
   BookOpen,
@@ -25,25 +30,25 @@ import {
 } from '@/store/slices/tradingSlice'
 import { mockTrades, mockJournalStats } from '@/lib/mock-trading-data'
 import { Trade } from '@/types/trading'
+import { JournalEntryForm } from '@/components/journal/JournalEntryForm'
 
 export function Journal() {
   const dispatch = useAppDispatch()
   const [isNewTradeOpen, setIsNewTradeOpen] = useState(false)
+  const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null)
+  const [isViewMode, setIsViewMode] = useState(false)
 
-  // Redux state
   const {
     trades,
     journalStats,
     journalFilters
   } = useAppSelector((state) => state.trading)
 
-  // 컴포넌트 마운트 시 초기 데이터 로드
   useEffect(() => {
     dispatch(setTrades(mockTrades))
     dispatch(setJournalStats(mockJournalStats))
   }, [dispatch])
 
-  // 필터링된 거래
   const filteredTrades = trades.filter(trade => {
     if (journalFilters.status !== 'all' && trade.status !== journalFilters.status) return false
     if (journalFilters.type !== 'all' && trade.type !== journalFilters.type) return false
@@ -51,12 +56,30 @@ export function Journal() {
     return true
   })
 
+  const handleSubmit = (formData: any) => {
+    console.log('저장할 데이터:', formData)
+    // TODO: Redux 액션으로 저장
+    setIsNewTradeOpen(false)
+  }
+
+  const handleEdit = (trade: Trade) => {
+    setSelectedTrade(trade)
+    setIsViewMode(false)
+    setIsNewTradeOpen(true)
+  }
+
+  const handleView = (trade: Trade) => {
+    setSelectedTrade(trade)
+    setIsViewMode(true)
+    setIsNewTradeOpen(true)
+  }
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
       currency: 'KRW',
       minimumFractionDigits: 0
-    }).format(amount * 1300) // USD to KRW 환산
+    }).format(amount * 1300)
   }
 
   const formatDate = (dateStr: string) => {
@@ -88,10 +111,18 @@ export function Journal() {
             </Badge>
           </div>
           <div className="flex gap-2">
-             <Button variant="ghost" size="sm" onClick={() => console.log('Edit:', trade.id)}>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => handleEdit(trade)}
+            >
               <Edit className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => handleView(trade)}
+            >
               <Eye className="h-4 w-4" />
             </Button>
           </div>
@@ -146,9 +177,10 @@ export function Journal() {
 
         <div>
           <p className="text-sm text-muted-foreground mb-1">사전 분석</p>
-          <p className="text-sm bg-muted p-2 rounded text-muted-foreground line-clamp-2">
-            {trade.preAnalysis}
-          </p>
+          <div 
+            className="text-sm bg-muted p-2 rounded text-muted-foreground line-clamp-2 prose prose-sm"
+            dangerouslySetInnerHTML={{ __html: trade.preAnalysis }}
+          />
         </div>
 
         <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -177,23 +209,17 @@ export function Journal() {
             <p className="text-muted-foreground">거래 기록과 성과 분석</p>
           </div>
         </div>
-        <Dialog open={isNewTradeOpen} onOpenChange={setIsNewTradeOpen}>
-          <DialogTrigger asChild>
-            <Button className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              새 거래 기록
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>새 거래 기록 추가</DialogTitle>
-            </DialogHeader>
-            {/* 새 거래 폼은 나중에 구현 */}
-            <div className="p-4 text-center text-muted-foreground">
-              거래 입력 폼 구현 예정
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button 
+          className="flex items-center gap-2"
+          onClick={() => {
+            setSelectedTrade(null)
+            setIsViewMode(false)
+            setIsNewTradeOpen(true)
+          }}
+        >
+          <Plus className="h-4 w-4" />
+          새 거래 기록
+        </Button>
       </div>
 
       {/* 통계 카드 */}
@@ -332,6 +358,42 @@ export function Journal() {
           </div>
         )}
       </div>
+
+      {/* 작성/편집 다이얼로그 */}
+      <Dialog open={isNewTradeOpen} onOpenChange={setIsNewTradeOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {isViewMode ? '거래 상세 보기' : selectedTrade ? '거래 기록 수정' : '새 거래 기록'}
+            </DialogTitle>
+          </DialogHeader>
+          {!isViewMode ? (
+            <JournalEntryForm
+              onSubmit={handleSubmit}
+              onCancel={() => setIsNewTradeOpen(false)}
+              initialData={selectedTrade ? {
+                symbol: selectedTrade.symbol,
+                market: 'US', // mockTrades에 market 필드가 없어서 기본값
+                entryPrice: selectedTrade.entryPrice.toString(),
+                stopLossPrice: selectedTrade.stopLoss?.toString() || '',
+                realizedPnl: selectedTrade.realizedPnL?.toString() || '',
+                reasoning: selectedTrade.preAnalysis,
+                type: selectedTrade.type,
+                quantity: selectedTrade.quantity.toString(),
+              } : undefined}
+            />
+          ) : (
+            <div className="space-y-4">
+              {/* 조회 모드 UI - 필요시 구현 */}
+              <div className="prose max-w-none">
+                <h3>{selectedTrade?.symbol}</h3>
+                <div dangerouslySetInnerHTML={{ __html: selectedTrade?.preAnalysis || '' }} />
+              </div>
+              <Button onClick={() => setIsNewTradeOpen(false)}>닫기</Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
