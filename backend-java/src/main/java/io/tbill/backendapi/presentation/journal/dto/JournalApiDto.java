@@ -3,7 +3,9 @@ package io.tbill.backendapi.presentation.journal.dto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.tbill.backendapi.domain.journal.dto.JournalDto;
 import io.tbill.backendapi.domain.journal.entity.MarketType;
+import jakarta.validation.constraints.*;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
@@ -12,50 +14,54 @@ import java.util.List;
 
 public class JournalApiDto {
 
-    // (Helper) ObjectMapper 주입을 위한 정적 내부 클래스
-    // Controller에서 이 DTO를 사용할 때 ObjectMapper를 주입받아 사용
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * 매매 이유(Reasoning)를 객체로 받기 위한 내부 DTO
+     * 매매 이유 DTO
      */
     @Getter
     @Setter
+    @NoArgsConstructor
     public static class ReasoningDto {
         private String markdown;
         private List<String> images;
     }
 
     /**
-     * [POST] /api/journals (매매일지 생성 요청)
+     * 매매일지 생성 요청
      */
     @Getter
     @Setter
+    @NoArgsConstructor
     public static class CreateRequest {
-        // Validation 어노테이션(@NotBlank, @NotNull) 추가 필요
+        @NotNull(message = "시장 타입은 필수입니다")
         private MarketType market;
+
+        @NotBlank(message = "심볼은 필수입니다")
+        @Size(max = 20, message = "심볼은 20자 이하여야 합니다")
         private String symbol;
+
+        @NotNull(message = "진입가는 필수입니다")
+        @DecimalMin(value = "0.0", inclusive = false, message = "진입가는 0보다 커야 합니다")
         private BigDecimal entryPrice;
+
+        @DecimalMin(value = "0.0", inclusive = false, message = "손절가는 0보다 커야 합니다")
         private BigDecimal stopLossPrice;
 
-        // API 스펙 상 JSON 객체(markdown, images)로 받음
         private ReasoningDto reasoning;
 
-        // Presentation DTO -> Domain DTO(Command)
         public JournalDto.CreateCommand toCommand(String authorEmail) {
             String reasoningJson = null;
             try {
-                // 객체를 JSON 문자열로 변환하여 Service에 전달
                 if (this.reasoning != null) {
                     reasoningJson = objectMapper.writeValueAsString(this.reasoning);
                 }
             } catch (Exception e) {
-                // (개선) 로깅 및 예외 처리
-                throw new RuntimeException("Reasoning DTO to JSON 변환 실패");
+                throw new RuntimeException("Reasoning DTO to JSON 변환 실패", e);
             }
 
             return JournalDto.CreateCommand.builder()
-                    .authorEmail(authorEmail) // Controller에서 인증 정보 주입
+                    .authorEmail(authorEmail)
                     .market(this.market)
                     .symbol(this.symbol)
                     .entryPrice(this.entryPrice)
@@ -66,7 +72,70 @@ public class JournalApiDto {
     }
 
     /**
-     * API 응답 DTO (상세 조회, 목록 조회 공통 사용)
+     * 매매일지 수정 요청 (새로 추가)
+     */
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    public static class UpdateRequest {
+        @DecimalMin(value = "0.0", inclusive = false, message = "진입가는 0보다 커야 합니다")
+        private BigDecimal entryPrice;
+
+        @DecimalMin(value = "0.0", inclusive = false, message = "손절가는 0보다 커야 합니다")
+        private BigDecimal stopLossPrice;
+
+        private BigDecimal realizedPnL; // 손익 입력
+
+        private ReasoningDto reasoning;
+
+        public JournalDto.UpdateCommand toCommand(Long id, String authorEmail) {
+            String reasoningJson = null;
+            try {
+                if (this.reasoning != null) {
+                    reasoningJson = objectMapper.writeValueAsString(this.reasoning);
+                }
+            } catch (Exception e) {
+                throw new RuntimeException("Reasoning DTO to JSON 변환 실패", e);
+            }
+
+            return JournalDto.UpdateCommand.builder()
+                    .id(id)
+                    .authorEmail(authorEmail)
+                    .entryPrice(this.entryPrice)
+                    .stopLossPrice(this.stopLossPrice)
+                    .realizedPnL(this.realizedPnL)
+                    .reasoning(reasoningJson)
+                    .build();
+        }
+    }
+
+    /**
+     * 매매일지 검색 요청 (새로 추가)
+     */
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    public static class SearchRequest {
+        private MarketType market;
+        private String symbol;
+        private LocalDateTime startDate;
+        private LocalDateTime endDate;
+        private Boolean isClosed;
+
+        public JournalDto.SearchCondition toSearchCondition(String authorEmail) {
+            return JournalDto.SearchCondition.builder()
+                    .authorEmail(authorEmail)
+                    .market(this.market)
+                    .symbol(this.symbol)
+                    .startDate(this.startDate)
+                    .endDate(this.endDate)
+                    .isClosed(this.isClosed)
+                    .build();
+        }
+    }
+
+    /**
+     * 매매일지 상세 응답
      */
     @Getter
     public static class JournalResponse {
@@ -77,14 +146,10 @@ public class JournalApiDto {
         private final BigDecimal entryPrice;
         private final BigDecimal stopLossPrice;
         private final BigDecimal realizedPnL;
-
-        // JSON 문자열을 다시 객체로 변환하여 응답
         private final ReasoningDto reasoning;
-
         private final LocalDateTime createdAt;
         private final LocalDateTime updatedAt;
 
-        // Domain DTO(Info) -> Presentation DTO(Response)
         public JournalResponse(JournalDto.JournalInfo info) {
             this.id = info.getId();
             this.authorEmail = info.getAuthorEmail();
@@ -96,16 +161,59 @@ public class JournalApiDto {
             this.createdAt = info.getCreatedAt();
             this.updatedAt = info.getUpdatedAt();
 
-            // JSON 문자열 -> 객체 변환
             ReasoningDto reasoningDto = null;
             if (info.getReasoning() != null) {
                 try {
                     reasoningDto = objectMapper.readValue(info.getReasoning(), ReasoningDto.class);
                 } catch (Exception e) {
-                    // (개선) 로깅
+                    // 로깅 처리
                 }
             }
             this.reasoning = reasoningDto;
+        }
+    }
+
+    /**
+     * 매매일지 목록 응답 (새로 추가 - 경량화)
+     */
+    @Getter
+    public static class JournalSummaryResponse {
+        private final Long id;
+        private final MarketType market;
+        private final String symbol;
+        private final BigDecimal entryPrice;
+        private final BigDecimal realizedPnL;
+        private final LocalDateTime createdAt;
+        private final Boolean isClosed;
+
+        public JournalSummaryResponse(JournalDto.JournalSummary summary) {
+            this.id = summary.getId();
+            this.market = summary.getMarket();
+            this.symbol = summary.getSymbol();
+            this.entryPrice = summary.getEntryPrice();
+            this.realizedPnL = summary.getRealizedPnL();
+            this.createdAt = summary.getCreatedAt();
+            this.isClosed = summary.getIsClosed();
+        }
+    }
+
+    /**
+     * 통계 응답 (새로 추가)
+     */
+    @Getter
+    public static class StatisticsResponse {
+        private final BigDecimal totalPnL;
+        private final Long totalTrades;
+        private final Long closedTrades;
+        private final Long openTrades;
+        private final BigDecimal winRate;
+
+        public StatisticsResponse(JournalDto.Statistics statistics) {
+            this.totalPnL = statistics.getTotalPnL();
+            this.totalTrades = statistics.getTotalTrades();
+            this.closedTrades = statistics.getClosedTrades();
+            this.openTrades = statistics.getOpenTrades();
+            this.winRate = statistics.getWinRate();
         }
     }
 }

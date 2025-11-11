@@ -4,13 +4,15 @@ import io.tbill.backendapi.domain.journal.dto.JournalDto;
 import io.tbill.backendapi.domain.journal.service.JournalService;
 import io.tbill.backendapi.global.utils.auth.AuthUtils;
 import io.tbill.backendapi.presentation.journal.dto.JournalApiDto;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequiredArgsConstructor
@@ -25,38 +27,43 @@ public class JournalController {
      */
     @PostMapping
     public ResponseEntity<JournalApiDto.JournalResponse> createJournal(
-            @RequestBody JournalApiDto.CreateRequest request // 1. Presentation DTO로 받음
+            @Valid @RequestBody JournalApiDto.CreateRequest request
     ) {
-        // (필수) Spring Security 등에서 현재 인증된 사용자 Email을 가져와야 함
         String currentUserEmail = AuthUtils.getCurrentUserEmail();
-
-        // 2. Presentation DTO -> Domain DTO(Command) 변환 (이메일 주입)
         JournalDto.CreateCommand command = request.toCommand(currentUserEmail);
-
-        // 3. Domain Service 호출
         JournalDto.JournalInfo journalInfo = journalService.createJournal(command);
-
-        // 4. Domain DTO(Info) -> Presentation DTO(Response) 변환
         JournalApiDto.JournalResponse response = new JournalApiDto.JournalResponse(journalInfo);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     /**
-     * 내 매매일지 목록 조회
-     * [GET] /api/journals
+     * 매매일지 수정
+     * [PUT] /api/journals/{journalId}
      */
-    @GetMapping
-    public ResponseEntity<List<JournalApiDto.JournalResponse>> getMyJournals() {
+    @PutMapping("/{journalId}")
+    public ResponseEntity<JournalApiDto.JournalResponse> updateJournal(
+            @PathVariable Long journalId,
+            @Valid @RequestBody JournalApiDto.UpdateRequest request
+    ) {
         String currentUserEmail = AuthUtils.getCurrentUserEmail();
+        JournalDto.UpdateCommand command = request.toCommand(journalId, currentUserEmail);
+        JournalDto.JournalInfo journalInfo = journalService.updateJournal(command);
+        JournalApiDto.JournalResponse response = new JournalApiDto.JournalResponse(journalInfo);
 
-        List<JournalDto.JournalInfo> journalInfos = journalService.getJournalsByUserEmail(currentUserEmail);
+        return ResponseEntity.ok(response);
+    }
 
-        List<JournalApiDto.JournalResponse> responses = journalInfos.stream()
-                .map(JournalApiDto.JournalResponse::new)
-                .collect(Collectors.toList());
+    /**
+     * 매매일지 삭제
+     * [DELETE] /api/journals/{journalId}
+     */
+    @DeleteMapping("/{journalId}")
+    public ResponseEntity<Void> deleteJournal(@PathVariable Long journalId) {
+        String currentUserEmail = AuthUtils.getCurrentUserEmail();
+        journalService.deleteJournal(journalId, currentUserEmail);
 
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.noContent().build();
     }
 
     /**
@@ -68,10 +75,113 @@ public class JournalController {
             @PathVariable Long journalId
     ) {
         String currentUserEmail = AuthUtils.getCurrentUserEmail();
-
         JournalDto.JournalInfo journalInfo = journalService.getJournalById(journalId, currentUserEmail);
-
         JournalApiDto.JournalResponse response = new JournalApiDto.JournalResponse(journalInfo);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 내 매매일지 목록 조회 (페이징)
+     * [GET] /api/journals?page=0&size=20&sortBy=createdAt&direction=DESC
+     */
+    @GetMapping
+    public ResponseEntity<Page<JournalApiDto.JournalSummaryResponse>> getMyJournals(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String direction
+    ) {
+        String currentUserEmail = AuthUtils.getCurrentUserEmail();
+        Sort.Direction sortDirection = Sort.Direction.fromString(direction);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
+
+        Page<JournalDto.JournalSummary> journalSummaries =
+                journalService.getMyJournals(currentUserEmail, pageable);
+
+        Page<JournalApiDto.JournalSummaryResponse> responses =
+                journalSummaries.map(JournalApiDto.JournalSummaryResponse::new);
+
+        return ResponseEntity.ok(responses);
+    }
+
+    /**
+     * 매매일지 검색
+     * [GET] /api/journals/search?market=STOCK&symbol=AAPL&isClosed=true
+     */
+    @GetMapping("/search")
+    public ResponseEntity<Page<JournalApiDto.JournalSummaryResponse>> searchJournals(
+            @ModelAttribute JournalApiDto.SearchRequest searchRequest,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String direction
+    ) {
+        String currentUserEmail = AuthUtils.getCurrentUserEmail();
+        Sort.Direction sortDirection = Sort.Direction.fromString(direction);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
+
+        JournalDto.SearchCondition condition = searchRequest.toSearchCondition(currentUserEmail);
+        Page<JournalDto.JournalSummary> journalSummaries =
+                journalService.searchJournals(condition, pageable);
+
+        Page<JournalApiDto.JournalSummaryResponse> responses =
+                journalSummaries.map(JournalApiDto.JournalSummaryResponse::new);
+
+        return ResponseEntity.ok(responses);
+    }
+
+    /**
+     * 진행 중인 거래 조회
+     * [GET] /api/journals/open
+     */
+    @GetMapping("/open")
+    public ResponseEntity<Page<JournalApiDto.JournalSummaryResponse>> getOpenTrades(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        String currentUserEmail = AuthUtils.getCurrentUserEmail();
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<JournalDto.JournalSummary> journalSummaries =
+                journalService.getOpenTrades(currentUserEmail, pageable);
+
+        Page<JournalApiDto.JournalSummaryResponse> responses =
+                journalSummaries.map(JournalApiDto.JournalSummaryResponse::new);
+
+        return ResponseEntity.ok(responses);
+    }
+
+    /**
+     * 종료된 거래 조회
+     * [GET] /api/journals/closed
+     */
+    @GetMapping("/closed")
+    public ResponseEntity<Page<JournalApiDto.JournalSummaryResponse>> getClosedTrades(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        String currentUserEmail = AuthUtils.getCurrentUserEmail();
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<JournalDto.JournalSummary> journalSummaries =
+                journalService.getClosedTrades(currentUserEmail, pageable);
+
+        Page<JournalApiDto.JournalSummaryResponse> responses =
+                journalSummaries.map(JournalApiDto.JournalSummaryResponse::new);
+
+        return ResponseEntity.ok(responses);
+    }
+
+    /**
+     * 통계 정보 조회
+     * [GET] /api/journals/statistics
+     */
+    @GetMapping("/statistics")
+    public ResponseEntity<JournalApiDto.StatisticsResponse> getStatistics() {
+        String currentUserEmail = AuthUtils.getCurrentUserEmail();
+        JournalDto.Statistics statistics = journalService.getStatistics(currentUserEmail);
+        JournalApiDto.StatisticsResponse response = new JournalApiDto.StatisticsResponse(statistics);
 
         return ResponseEntity.ok(response);
     }

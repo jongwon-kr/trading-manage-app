@@ -10,18 +10,16 @@ import java.time.LocalDateTime;
 public class JournalDto {
 
     /**
-     * Service가 매매일지 생성을 위해 Controller로부터 받을 '명령' (Command)
+     * 매매일지 생성 Command
      */
     @Getter
     public static class CreateCommand {
-        // (인증된) 작성자 이메일 - 이 필드는 Controller에서 DTO로 변환 시,
-        // SecurityContext 등에서 가져와 주입하는 것이 좋습니다.
         private final String authorEmail;
         private final MarketType market;
         private final String symbol;
         private final BigDecimal entryPrice;
         private final BigDecimal stopLossPrice;
-        private final String reasoning; // JSON 형식의 문자열
+        private final String reasoning;
 
         @Builder
         public CreateCommand(String authorEmail, MarketType market, String symbol,
@@ -42,14 +40,60 @@ public class JournalDto {
                     .entryPrice(this.entryPrice)
                     .stopLossPrice(this.stopLossPrice)
                     .reasoning(this.reasoning)
-                    // realizedPnL은 매매 생성 시점이 아닌,
-                    // 종료/수정 시점에 업데이트되므로 여기서는 null
                     .build();
         }
     }
 
     /**
-     * Service가 Controller로 반환할 '정보' (Info)
+     * 매매일지 수정 Command (새로 추가)
+     */
+    @Getter
+    public static class UpdateCommand {
+        private final Long id;
+        private final String authorEmail; // 권한 검증용
+        private final BigDecimal entryPrice;
+        private final BigDecimal stopLossPrice;
+        private final BigDecimal realizedPnL; // 손익 업데이트
+        private final String reasoning;
+
+        @Builder
+        public UpdateCommand(Long id, String authorEmail, BigDecimal entryPrice,
+                             BigDecimal stopLossPrice, BigDecimal realizedPnL, String reasoning) {
+            this.id = id;
+            this.authorEmail = authorEmail;
+            this.entryPrice = entryPrice;
+            this.stopLossPrice = stopLossPrice;
+            this.realizedPnL = realizedPnL;
+            this.reasoning = reasoning;
+        }
+    }
+
+    /**
+     * 매매일지 검색 조건 (새로 추가)
+     */
+    @Getter
+    public static class SearchCondition {
+        private final String authorEmail;
+        private final MarketType market;
+        private final String symbol;
+        private final LocalDateTime startDate;
+        private final LocalDateTime endDate;
+        private final Boolean isClosed; // true: 종료된 거래, false: 진행중, null: 전체
+
+        @Builder
+        public SearchCondition(String authorEmail, MarketType market, String symbol,
+                               LocalDateTime startDate, LocalDateTime endDate, Boolean isClosed) {
+            this.authorEmail = authorEmail;
+            this.market = market;
+            this.symbol = symbol;
+            this.startDate = startDate;
+            this.endDate = endDate;
+            this.isClosed = isClosed;
+        }
+    }
+
+    /**
+     * 매매일지 정보 (기존 유지)
      */
     @Getter
     public static class JournalInfo {
@@ -60,11 +104,10 @@ public class JournalDto {
         private final BigDecimal entryPrice;
         private final BigDecimal stopLossPrice;
         private final BigDecimal realizedPnL;
-        private final String reasoning; // JSON 문자열
+        private final String reasoning;
         private final LocalDateTime createdAt;
         private final LocalDateTime updatedAt;
 
-        // 정적 팩토리 메서드 (Entity -> DTO)
         public static JournalInfo from(Journal journal) {
             return new JournalInfo(journal);
         }
@@ -80,6 +123,56 @@ public class JournalDto {
             this.reasoning = journal.getReasoning();
             this.createdAt = journal.getCreatedAt();
             this.updatedAt = journal.getUpdatedAt();
+        }
+    }
+
+    /**
+     * 매매일지 목록 요약 정보 (새로 추가 - 리스트용 경량화)
+     */
+    @Getter
+    public static class JournalSummary {
+        private final Long id;
+        private final MarketType market;
+        private final String symbol;
+        private final BigDecimal entryPrice;
+        private final BigDecimal realizedPnL;
+        private final LocalDateTime createdAt;
+        private final Boolean isClosed;
+
+        public static JournalSummary from(Journal journal) {
+            return new JournalSummary(journal);
+        }
+
+        private JournalSummary(Journal journal) {
+            this.id = journal.getId();
+            this.market = journal.getMarket();
+            this.symbol = journal.getSymbol();
+            this.entryPrice = journal.getEntryPrice();
+            this.realizedPnL = journal.getRealizedPnL();
+            this.createdAt = journal.getCreatedAt();
+            this.isClosed = journal.getRealizedPnL() != null;
+        }
+    }
+
+    /**
+     * 통계 정보 (새로 추가)
+     */
+    @Getter
+    public static class Statistics {
+        private final BigDecimal totalPnL;
+        private final Long totalTrades;
+        private final Long closedTrades;
+        private final Long openTrades;
+        private final BigDecimal winRate;
+
+        @Builder
+        public Statistics(BigDecimal totalPnL, Long totalTrades, Long closedTrades,
+                          Long openTrades, BigDecimal winRate) {
+            this.totalPnL = totalPnL;
+            this.totalTrades = totalTrades;
+            this.closedTrades = closedTrades;
+            this.openTrades = openTrades;
+            this.winRate = winRate;
         }
     }
 }
