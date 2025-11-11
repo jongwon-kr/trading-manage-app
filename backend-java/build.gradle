@@ -54,10 +54,19 @@ dependencies {
 
     // test (H2 DB 추가)
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.mockito:mockito-inline:5.2.0'
+    testImplementation 'org.springframework.security:spring-security-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testRuntimeOnly 'com.h2database:h2'
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+
+    // Mockito dynamic agent 워닝 제거
+    jvmArgs(
+            '-XX:+EnableDynamicAgentLoading',
+            '--add-opens', 'java.base/java.lang=ALL-UNNAMED',
+            '--add-opens', 'java.base/java.util=ALL-UNNAMED'
+    )
 }

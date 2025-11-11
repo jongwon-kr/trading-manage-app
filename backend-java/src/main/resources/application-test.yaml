@@ -1,22 +1,58 @@
 spring:
+  application:
+    name: tbill-backend-api-test
+
   datasource:
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    username: sa
-    password:
     driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    username: sa
+    password: ""
 
   jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
-      ddl-auto: create-drop # 테스트는 항상 새로 생성하고 끝나면 삭제
-    show-sql: false
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+
+  h2:
+    console:
+      enabled: false
+
+  # Security 자동 설정 비활성화 (테스트용)
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
 
   data:
     redis:
-
       host: localhost
-      port: 63799
+      port: 6379
+      password: ""
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      auto-offset-reset: earliest
+      group-id: test-group
+    producer:
+      retries: 0
+
+# JWT 설정 - 32자 이상의 단순 문자열
+jwt:
+  secret: testsecretkeymustbeatleast32characters123456789
+  access-token-expiration-ms: 3600000
+  refresh-token-expiration-ms: 7200000
 
 logging:
   level:
-    root: WARN
+    root: INFO
+    io.tbill.backendapi: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.springframework.security: INFO
+
+management:
+  endpoints:
+    enabled-by-default: false
