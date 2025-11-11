@@ -34,13 +34,18 @@ public class SecurityConfig {
 
     // 인증이 필요 없는 PUBLIC 경로
     private static final String[] PUBLIC_PATHS = {
-            "/api/users/sign-up", // 회원가입
-            "/api/auth/sign-in",  // 로그인
-            "/api/auth/refresh",  // 토큰 재발급
+            // 인증
+            "/api/auth/**",
 
             // Swagger UI
             "/swagger-ui/**",
             "/v3/api-docs/**",
+
+            // Python Service
+            "/api/analysis/**",
+
+            // Actuator
+            "/actuator/**",
     };
 
     @Bean

@@ -43,10 +43,12 @@ public class AnalysisResultCacheService {
             String jsonValue = redisTemplate.opsForValue().get(key);
 
             if (jsonValue == null) {
+                log.warn("분석 결과 없음: requestId={}", requestId);
                 return Optional.empty();
             }
 
             T result = objectMapper.readValue(jsonValue, resultType);
+            log.info("분석 결과 조회 성공: requestId={}", requestId);
             return Optional.of(result);
         } catch (Exception e) {
             log.error("분석 결과 조회 실패: requestId={}", requestId, e);
@@ -68,6 +70,7 @@ public class AnalysisResultCacheService {
      */
     public boolean existsAnalysisResult(String requestId) {
         String key = ANALYSIS_KEY_PREFIX + requestId;
-        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+        Boolean exists = redisTemplate.hasKey(key);
+        return Boolean.TRUE.equals(exists);
     }
 }
