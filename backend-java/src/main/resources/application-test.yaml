@@ -21,7 +21,6 @@ spring:
     console:
       enabled: false
 
-  # Security 자동 설정 비활성화 (테스트용)
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
@@ -32,6 +31,7 @@ spring:
       port: 6379
       password: ""
 
+  # Kafka 테스트 설정 추가
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
@@ -40,7 +40,6 @@ spring:
     producer:
       retries: 0
 
-# JWT 설정 - 32자 이상의 단순 문자열
 jwt:
   secret: testsecretkeymustbeatleast32characters123456789
   access-token-expiration-ms: 3600000
@@ -52,6 +51,7 @@ logging:
     io.tbill.backendapi: DEBUG
     org.hibernate.SQL: DEBUG
     org.springframework.security: INFO
+    org.apache.kafka: WARN
 
 management:
   endpoints:

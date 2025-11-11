@@ -7,13 +7,21 @@ spring:
       hibernate:
         format_sql: false
 
+  # Kafka 운영 설정 추가
+  kafka:
+    producer:
+      acks: all  # 운영에서는 안정성 최우선
+      retries: 10
+    consumer:
+      enable-auto-commit: false  # 수동 커밋으로 메시지 손실 방지
+
 logging:
   level:
     root: INFO
     org.hibernate.SQL: INFO
     org.hibernate.orm.jdbc.bind: INFO
-
+    org.apache.kafka: WARN
 
 #springdoc:
 #  swagger-ui:
-#    enabled: false # (운영용) Swagger UI 비활성
+#    enabled: false

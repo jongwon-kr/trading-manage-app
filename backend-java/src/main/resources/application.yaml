@@ -20,6 +20,22 @@ spring:
       port: ${REDIS_PORT}
       password: ${REDIS_PASSWORD}
 
+  # Kafka 설정 추가
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: 1
+      retries: 3
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      group-id: ${KAFKA_CONSUMER_GROUP_ID}
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: "*"
+
   management:
     endpoints:
       web:
@@ -38,4 +54,4 @@ jwt:
 
 logging:
   level:
-    root: INFO # 모든 환경의 기본 로그 레벨
+    root: INFO

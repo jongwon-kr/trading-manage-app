@@ -6,7 +6,13 @@ data:
   # PostgreSQL 접속 정보
   DB_POSTGRES_HOST: "postgres-svc"
   DB_POSTGRES_PORT: "5432"
-  DB_POSTGRES_DBNAME: "postgres" # 사용할 DB 이름
-  DB_POSTGRES_USER: "postgres" # 기본 관리자 유저
+  DB_POSTGRES_DBNAME: "postgres"
+  DB_POSTGRES_USER: "postgres"
+  
+  # Redis 접속 정보
   REDIS_HOST: "redis-svc"
   REDIS_PORT: "6379"
+  
+  # Kafka 접속 정보 (추가)
+  KAFKA_BOOTSTRAP_SERVERS: "kafka-svc:9092"
+  KAFKA_CONSUMER_GROUP_ID: "tbill-api-group"

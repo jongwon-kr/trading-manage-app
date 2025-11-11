@@ -1,4 +1,3 @@
-
 spring:
   # ========================================
   # DB (로컬용)
@@ -6,15 +5,15 @@ spring:
   datasource:
     url: jdbc:postgresql://${DB_POSTGRES_HOST:localhost}:${DB_POSTGRES_PORT:5432}/${DB_POSTGRES_DBNAME:postgres}
     username: ${DB_POSTGRES_USER:postgres}
-    password: ${POSTGRES_PASSWORD:1234} # .env의 값 또는 '1234'
+    password: ${POSTGRES_PASSWORD:1234}
 
   # ========================================
   # JPA (로컬용)
   # ========================================
   jpa:
     hibernate:
-      ddl-auto: update # (개발용) DB 자동 업데이트
-    show-sql: true # (개발용) SQL 로그 활성화
+      ddl-auto: update
+    show-sql: true
     properties:
       hibernate:
         format_sql: true
@@ -26,20 +25,39 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:1234} # .env의 값 또는 '1234'
+      password: ${REDIS_PASSWORD:1234}
+
+  # ========================================
+  # KAFKA (로컬용) - 추가
+  # ========================================
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: 1
+      retries: 3
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      group-id: ${KAFKA_CONSUMER_GROUP_ID:tbill-local-group}
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: "*"
 
 # ========================================
 # 로깅 (로컬용)
 # ========================================
 logging:
   level:
-    # (개발용) SQL 로그 상세 보기
     org.hibernate.SQL: DEBUG
     org.hibernate.orm.jdbc.bind: TRACE
+    org.apache.kafka: INFO
+    io.tbill.backendapi: DEBUG
 
 # ========================================
 # Springdoc (Swagger) - (로컬용)
 # ========================================
 springdoc:
   swagger-ui:
-    enabled: true # (개발용) Swagger UI 활성화
+    enabled: true
