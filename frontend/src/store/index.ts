@@ -1,19 +1,14 @@
-import { configureStore } from '@reduxjs/toolkit'
-import pageReducer from './slices/pageSlice'
-import tradingReducer from './slices/tradingSlice'
+import { configureStore } from '@reduxjs/toolkit';
+import authReducer from './slices/authSlice';
+import tradesReducer from './slices/tradesSlice';
 
-export const store = configureStore({
+const store = configureStore({
   reducer: {
-    page: pageReducer,
-    trading: tradingReducer,
+    auth: authReducer,
+    trades: tradesReducer,
   },
-  middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({
-      serializableCheck: {
-        ignoredActions: ['persist/PERSIST'],
-      },
-    }),
-})
+});
 
-export type RootState = ReturnType<typeof store.getState>
-export type AppDispatch = typeof store.dispatch
+export type RootState = ReturnType<typeof store.getState>;
+export type AppDispatch = typeof store.dispatch;
+export default store;
