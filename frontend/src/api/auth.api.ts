@@ -1,17 +1,40 @@
 import axiosInstance from './axios';
-import { AuthResponse, LoginRequest, RegisterRequest, User } from '../types/auth.types';
+// [수정] AuthResponse 타입을 API 응답(Body)과 Thunk Payload(Header 포함)용으로 분리
+import { 
+  AuthResponse as ApiAuthResponse, // API Body 응답 (AT 없음)
+  AuthResponse as ThunkAuthResponse, // Thunk Payload (AT 포함)
+  LoginRequest, 
+  RegisterRequest, 
+  User 
+} from '../types/auth.types';
 import { API_ENDPOINTS } from '../utils/constants';
+
+// [수정] auth.types.ts에서 AT 필드가 제거되었으므로, API 응답 타입을 ApiAuthResponse로 변경
+type ApiLoginResponse = Omit<ThunkAuthResponse, 'accessToken'>;
+type ApiRefreshResponse = Omit<ThunkAuthResponse, 'accessToken'>;
 
 export const authAPI = {
   /**
-   * Login user
+   * [수정] Login user
+   * Body로 user, expiresAt을 받고, Header로 'access' 토큰을 받음
    */
-  login: async (credentials: LoginRequest): Promise<AuthResponse> => {
-    const response = await axiosInstance.post<AuthResponse>(
+  login: async (credentials: LoginRequest): Promise<ThunkAuthResponse> => {
+    const response = await axiosInstance.post<ApiLoginResponse>(
       API_ENDPOINTS.AUTH.LOGIN,
       credentials
     );
-    return response.data; // { accessToken: "..." }
+    
+    // [수정] 헤더에서 'access' 토큰 추출
+    const accessToken = response.headers['access'];
+    if (!accessToken) {
+      throw new Error("로그인 응답에서 'access' 헤더를 찾을 수 없습니다.");
+    }
+    
+    // [수정] Body 데이터와 Header 토큰을 조합하여 Thunk에 반환
+    return { 
+      ...response.data, 
+      accessToken 
+    };
   },
 
   /**
@@ -26,14 +49,25 @@ export const authAPI = {
   },
 
   /**
-   * Refresh Access Token
-   * HttpOnly 쿠키(RefreshToken)를 사용하여 새 AccessToken을 요청합니다.
+   * [수정] Refresh Access Token
+   * Body로 user, expiresAt을 받고, Header로 'access' 토큰을 받음
    */
-  refresh: async (): Promise<AuthResponse> => {
-    const response = await axiosInstance.post<AuthResponse>(
+  refresh: async (): Promise<ThunkAuthResponse> => {
+    const response = await axiosInstance.post<ApiRefreshResponse>(
       API_ENDPOINTS.AUTH.REFRESH
     );
-    return response.data; // { accessToken: "..." }
+
+    // [수정] 헤더에서 'access' 토큰 추출
+    const accessToken = response.headers['access'];
+    if (!accessToken) {
+      throw new Error("토큰 갱신 응답에서 'access' 헤더를 찾을 수 없습니다.");
+    }
+
+    // [수정] Body 데이터와 Header 토큰을 조합하여 Thunk에 반환
+    return { 
+      ...response.data, 
+      accessToken 
+    };
   },
 
   /**

@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { authAPI } from '@/api/auth.api';
 import {
   AuthState,
@@ -7,33 +7,37 @@ import {
   User,
   AuthResponse,
 } from '@/types/auth.types';
-import { TOKEN_KEY, USER_KEY } from '@/utils/constants';
+import { USER_KEY } from '@/utils/constants';
 
 const initialState: AuthState = {
   user: null, 
-  token: null, 
+  accessToken: null, // [추가]
+  accessTokenExpiresAt: null, 
   isAuthenticated: false, 
-  isLoading: true, // 앱 시작 시 항상 true (인증 확인 중)
+  isLoading: true, 
   error: null,
 };
 
 /**
- * [신규] 앱 로드 시 세션 복원 (RefreshToken 사용)
+ * [수정] 앱 로드 시 세션 복원 (RefreshToken 쿠키 사용)
  */
 export const refreshSession = createAsyncThunk(
   'auth/refreshSession',
   async (_, { rejectWithValue }) => {
     try {
-      const refreshResponse = await authAPI.refresh();
-      const { accessToken } = refreshResponse;
-      localStorage.setItem(TOKEN_KEY, accessToken);
-      const user = await authAPI.getCurrentUser();
-      localStorage.setItem(USER_KEY, JSON.stringify(user));
-      return { accessToken, user };
-    } catch (error) {
-      localStorage.removeItem(TOKEN_KEY);
+      // 1. [수정] /api/auth/refresh 호출
+      // (auth.api.ts에서 헤더('access')를 읽어 AT를 포함한 AuthResponse 반환)
+      const response = await authAPI.refresh(); // { user, accessTokenExpiresAt, accessToken }
+      
+      // 2. [유지] 응답 받은 User 정보를 localStorage에 저장
+      localStorage.setItem(USER_KEY, JSON.stringify(response.user));
+
+      // 3. Reducer에 user, 만료 시간, AT 전달
+      return response; // { user, accessTokenExpiresAt, accessToken }
+    } catch (error: any) {
+      // Refresh 실패 = 세션 만료
       localStorage.removeItem(USER_KEY);
-      return rejectWithValue('세션이 만료되었습니다. 다시 로그인해주세요.');
+      return rejectWithValue(error.message || '세션이 만료되었습니다.');
     }
   }
 );
@@ -42,38 +46,18 @@ export const refreshSession = createAsyncThunk(
 export const loginUser = createAsyncThunk(
   'auth/login',
   async (credentials: LoginRequest, { dispatch, rejectWithValue }) => {
-    // ... (test@example.com 목업 로직은 동일)
-    if (credentials.email === 'test@example.com' && credentials.password === 'test') {
-      try {
-        const mockToken = 'mock-jwt-token-for-test-user';
-        const mockUser: User = {
-          id: 999,
-          username: 'test',
-          email: 'test@example.com',
-        };
-        const mockResponse: AuthResponse = {
-          accessToken: mockToken, 
-          user: mockUser,
-        };
-        localStorage.setItem(TOKEN_KEY, mockResponse.accessToken); 
-        localStorage.setItem(USER_KEY, JSON.stringify(mockResponse.user));
-        return mockResponse;
-      } catch (error) {
-        return rejectWithValue((error as Error).message);
-      }
-    }
-    
-    // 실제 API 로직
     try {
-      const response = await authAPI.login(credentials);
-      localStorage.setItem(TOKEN_KEY, response.accessToken);
+      // 1. [수정] 로그인 시 { user, accessTokenExpiresAt, accessToken } 응답 받음
+      // (auth.api.ts에서 헤더('access')를 읽어 AT를 포함)
+      const response = await authAPI.login(credentials); 
       
-      const user = await authAPI.getCurrentUser();
-      localStorage.setItem(USER_KEY, JSON.stringify(user));
+      // 2. [유지] User 정보만 localStorage에 저장
+      localStorage.setItem(USER_KEY, JSON.stringify(response.user));
 
-      return { accessToken: response.accessToken, user: user } as AuthResponse; 
-    } catch (error) {
-      return rejectWithValue('이메일 또는 비밀번호가 잘못되었습니다.');
+      // 3. Reducer에 user, 만료 시간, AT 전달
+      return response; // { user, accessTokenExpiresAt, accessToken }
+    } catch (error: any) {
+      return rejectWithValue(error.message || '이메일 또는 비밀번호가 잘못되었습니다.');
     }
   },
 );
@@ -84,8 +68,8 @@ export const registerUser = createAsyncThunk(
     try {
       const user = await authAPI.register(data);
       return user; 
-    } catch (error) {
-      return rejectWithValue((error as Error).message);
+    } catch (error: any) {
+      return rejectWithValue(error.message);
     }
   }
 );
@@ -94,12 +78,12 @@ export const logoutUser = createAsyncThunk(
   'auth/logout',
   async (_, { rejectWithValue }) => {
     try {
-      await authAPI.logout(); 
-    } catch (error) {
+      await authAPI.logout(); // 백엔드가 RT 쿠키를 삭제함
+    } catch (error: any) {
        console.error("Logout API failed: ", error);
     } finally {
-       localStorage.removeItem(TOKEN_KEY);
        localStorage.removeItem(USER_KEY);
+       return; 
     }
   }
 );
@@ -115,43 +99,49 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     
+    // [수정] refreshSession Reducers
     builder
       .addCase(refreshSession.pending, (state) => {
         state.isLoading = true;
         state.isAuthenticated = false;
+        state.accessToken = null; // [추가]
       })
-      .addCase(refreshSession.fulfilled, (state, action) => {
+      .addCase(refreshSession.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
         state.isLoading = false;
         state.isAuthenticated = true;
-        state.token = action.payload.accessToken;
+        state.accessTokenExpiresAt = action.payload.accessTokenExpiresAt;
         state.user = action.payload.user;
+        state.accessToken = action.payload.accessToken; // [추가]
       })
       .addCase(refreshSession.rejected, (state) => {
         state.isLoading = false;
         state.isAuthenticated = false;
-        state.token = null;
+        state.accessTokenExpiresAt = null;
         state.user = null;
+        state.accessToken = null; // [추가]
       });
 
-    // Login Reducers
+    // [수정] Login Reducers
     builder
       .addCase(loginUser.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(loginUser.fulfilled, (state, action) => {
+      .addCase(loginUser.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
         state.isLoading = false;
         state.user = action.payload.user;
-        state.token = action.payload.accessToken; 
+        state.accessTokenExpiresAt = action.payload.accessTokenExpiresAt; 
+        state.accessToken = action.payload.accessToken; // [추가]
         state.isAuthenticated = true;
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
         state.isAuthenticated = false;
+        state.accessToken = null; // [추가]
       });
 
-    // Register Reducers
+    // [유지] Register Reducers
     builder
       .addCase(registerUser.pending, (state) => {
         state.isLoading = true;
@@ -166,22 +156,29 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
       });
 
-    // Logout Reducers
+    // [수정] Logout Reducers
     builder
       .addCase(logoutUser.pending, (state) => {
-        state.isLoading = true;
+        state.isLoading = false; 
+        state.user = null;
+        state.accessToken = null; // [추가]
+        state.accessTokenExpiresAt = null;
+        state.isAuthenticated = false;
+        state.error = null;
       })
       .addCase(logoutUser.fulfilled, (state) => {
         state.isLoading = false;
         state.user = null;
-        state.token = null;
+        state.accessToken = null; // [추가]
+        state.accessTokenExpiresAt = null; 
         state.isAuthenticated = false;
         state.error = null;
       })
       .addCase(logoutUser.rejected, (state) => {
         state.isLoading = false;
         state.user = null;
-        state.token = null;
+        state.accessToken = null; // [추가]
+        state.accessTokenExpiresAt = null; 
         state.isAuthenticated = false;
       });
   },

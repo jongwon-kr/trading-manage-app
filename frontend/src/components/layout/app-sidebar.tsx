@@ -1,4 +1,4 @@
-// src/components/layout/app-sidebar.tsx
+import { useState, useEffect } from 'react'; 
 import { 
   Sidebar, 
   SidebarContent, 
@@ -17,15 +17,15 @@ import {
   BarChart3, 
   Settings, 
   LogOut,
-  Home
+  Home,
+  RefreshCw, 
+  Timer, 
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-// --- 경로 수정 ---
-import { useAppDispatch, useAppSelector } from "@/store/hooks" // ✅ Redux hooks
-import { setActivePage, ActivePage } from "@/store/slices/pageSlice" // ✅ Redux action
-import { logoutUser } from "@/store/slices/authSlice" // ✅ logoutUser 액션 추가
-// --- 경로 수정 ---
+import { useAppDispatch, useAppSelector } from "@/store/hooks" 
+import { setActivePage, ActivePage } from "@/store/slices/pageSlice" 
+import { logoutUser, refreshSession } from "@/store/slices/authSlice" 
 import { cn } from "@/utils/shadcn-util"
 
 const menuItems = [
@@ -49,19 +49,92 @@ const menuItems = [
     page: "performance" as ActivePage,
     icon: BarChart3,
   },
-]
+];
+
+/**
+ * [신규] AccessToken 만료 타이머 및 갱신 버튼 컴포넌트
+ */
+const TokenExpiryTimer = () => {
+  const dispatch = useAppDispatch();
+  const { accessTokenExpiresAt, isAuthenticated } = useAppSelector((state) => state.auth);
+  const [timeLeft, setTimeLeft] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated || !accessTokenExpiresAt) {
+      setTimeLeft("");
+      return;
+    }
+
+    const calculateTimeLeft = () => {
+      const now = Date.now();
+      const remaining = accessTokenExpiresAt - now;
+
+      if (remaining <= 0) {
+        setTimeLeft("만료됨");
+        // [수정] 만료 시 자동 갱신 대신, 사용자에게 알림
+        // (요청사항: "갱신버튼을 누르지 않으면 refresh가 되도록 하면 안됨")
+        // toast.warning("세션이 만료되었습니다. 갱신이 필요합니다.");
+        return;
+      }
+
+      const minutes = Math.floor(remaining / 60000);
+      const seconds = Math.floor((remaining % 60000) / 1000);
+      setTimeLeft(`${minutes}:${seconds < 10 ? '0' : ''}${seconds}`);
+    };
+
+    calculateTimeLeft(); // 즉시 1회 실행
+    const interval = setInterval(calculateTimeLeft, 1000); // 1초마다 갱신
+
+    return () => clearInterval(interval);
+  }, [accessTokenExpiresAt, isAuthenticated]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await dispatch(refreshSession());
+    setIsRefreshing(false);
+  };
+
+  if (!timeLeft) return null;
+
+  const isExpired = timeLeft === "만료됨";
+
+  return (
+    <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-muted/50">
+      <div className="flex items-center gap-2">
+        <Timer className={`h-4 w-4 ${isExpired ? 'text-red-500' : 'text-muted-foreground'}`} />
+        <div className="text-xs">
+          <p className="text-muted-foreground">세션 만료까지</p>
+          <p className={`font-medium ${isExpired ? 'text-red-500' : 'text-foreground'}`}>
+            {timeLeft}
+          </p>
+        </div>
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-7 w-7"
+        onClick={handleRefresh}
+        disabled={isRefreshing}
+      >
+        <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+      </Button>
+    </div>
+  );
+};
+
 
 export function AppSidebar() {
-  const dispatch = useAppDispatch() // ✅ Redux dispatch
-  const activePage = useAppSelector((state) => state.page.activePage) // ✅ Redux selector
-  const user = useAppSelector((state) => state.auth.user); // ✅ Redux user selector
+  const dispatch = useAppDispatch() 
+  const activePage = useAppSelector((state) => state.page.activePage) 
+  const user = useAppSelector((state) => state.auth.user); 
 
   const handlePageChange = (page: ActivePage) => {
-    dispatch(setActivePage(page)) // ✅ Redux action 디스패치
+    dispatch(setActivePage(page)) 
   }
 
   const handleLogout = () => {
-    dispatch(logoutUser()); // ✅ 로그아웃 액션 디스패치
+    dispatch(logoutUser()); 
   }
 
   return (
@@ -86,7 +159,7 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <button 
-                      onClick={() => handlePageChange(item.page)} // ✅ Redux 액션 호출
+                      onClick={() => handlePageChange(item.page)} 
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground w-full text-left",
                         activePage === item.page && "bg-accent text-accent-foreground"
@@ -103,8 +176,11 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       
-      <SidebarFooter className="border-t p-4">
-        <div className="flex items-center gap-3 mb-3">
+      <SidebarFooter className="border-t p-4 space-y-3">
+        {/* [추가] 토큰 만료 타이머 */}
+        <TokenExpiryTimer />
+      
+        <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8">
             <AvatarImage src="/placeholder-avatar.jpg" />
             <AvatarFallback>{user?.username.substring(0, 2).toUpperCase() || 'TM'}</AvatarFallback>
@@ -119,7 +195,7 @@ export function AppSidebar() {
             <Settings className="h-4 w-4 mr-2" />
             설정
           </Button>
-          <Button variant="ghost" size="sm" onClick={handleLogout}> {/* ✅ 로그아웃 핸들러 연결 */}
+          <Button variant="ghost" size="sm" onClick={handleLogout}> 
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
