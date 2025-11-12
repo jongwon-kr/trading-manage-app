@@ -11,15 +11,19 @@ import {
 } from '@/components/ui/select'
 import { TradingJournalEditor } from '@/components/editor/TradingJournalEditor'
 import { Save, X } from 'lucide-react'
+// [추가] 타입 임포트
+import { MarketType, TradeType } from '@/types/journal.types'
 
-interface JournalFormData {
+
+// [수정] 폼 데이터 타입 (BE DTO와 맞춤)
+export interface JournalFormData {
   symbol: string
-  market: string
+  market: MarketType
   entryPrice: string
   stopLossPrice: string
-  realizedPnl: string
+  realizedPnl: string // (참고) 생성 폼에서는 사용하지 않음
   reasoning: string
-  type: 'long' | 'short'
+  type: 'long' | 'short' // (참고) BE는 'LONG' | 'SHORT'
   quantity: string
 }
 
@@ -36,12 +40,12 @@ export function JournalEntryForm({
 }: JournalEntryFormProps) {
   const [formData, setFormData] = useState<JournalFormData>({
     symbol: initialData?.symbol || '',
-    market: initialData?.market || 'US',
+    market: initialData?.market || MarketType.STOCK, // [수정] Enum 사용
     entryPrice: initialData?.entryPrice || '',
     stopLossPrice: initialData?.stopLossPrice || '',
     realizedPnl: initialData?.realizedPnl || '',
     reasoning: initialData?.reasoning || '',
-    type: initialData?.type || 'long',
+    type: initialData?.type || 'long', // [수정] 기본값
     quantity: initialData?.quantity || '',
   })
 
@@ -70,15 +74,16 @@ export function JournalEntryForm({
             <Label htmlFor="market">시장 *</Label>
             <Select
               value={formData.market}
-              onValueChange={(value) => setFormData({ ...formData, market: value })}
+              onValueChange={(value) => setFormData({ ...formData, market: value as MarketType })} // [수정]
             >
               <SelectTrigger id="market">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="US">미국</SelectItem>
-                <SelectItem value="KR">한국</SelectItem>
-                <SelectItem value="CRYPTO">암호화폐</SelectItem>
+                <SelectItem value={MarketType.STOCK}>미국/한국 주식</SelectItem>
+                <SelectItem value={MarketType.CRYPTO}>암호화폐</SelectItem>
+                <SelectItem value={MarketType.FOREX}>외환</SelectItem>
+                <SelectItem value={MarketType.FUTURES}>선물</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -155,6 +160,7 @@ export function JournalEntryForm({
               placeholder="500.00"
               value={formData.realizedPnl}
               onChange={(e) => setFormData({ ...formData, realizedPnl: e.target.value })}
+              disabled // [수정] 생성 시에는 비활성화
             />
           </div>
         </div>

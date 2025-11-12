@@ -1,43 +1,64 @@
-import axiosInstance from "./axios";
-import {
-  JournalApiDto,
+import axiosInstance from './axios';
+import { 
+  JournalApiDto, 
   JournalStatistics,
   JournalSummary,
-} from "@/types/journal.types";
-import { Page } from "@/types/common.types";
+  JournalPaging // [수정]
+} from '@/types/journal.types'; 
+// [제거] Page 타입 (common.types.ts의 PagedResponse로 대체됨)
+import { API_ENDPOINTS } from '@/utils/constants';
 
-// 임시 API 경로 (추후 constants.ts로 이동)
-const API_JOURNALS = "/journals";
+// 백엔드의 /api/journals 엔드포인트와 통신합니다.
 
 export const journalAPI = {
+  
   /**
-   * 내 매매일지 목록 조회 (페이징)
-   * GET /api/journals
+   * [수정] 매매일지 검색 (기존 getJournals 통합)
+   * GET /api/journals 또는 /api/journals/search
    */
-  getJournals: async (pageable: {
-    page: number;
-    size: number;
-  }): Promise<Page<JournalSummary>> => {
-    const params = new URLSearchParams({
-      page: pageable.page.toString(),
-      size: pageable.size.toString(),
-      sortBy: "createdAt",
-      direction: "DESC",
-    });
+  search: async (filters: JournalApiDto.JournalFilters): Promise<JournalPaging<JournalSummary>> => {
+    
+    // 쿼리 파라미터 생성
+    const params = new URLSearchParams();
+    
+    // Pageable 파라미터
+    params.append('page', (filters.page || 0).toString());
+    params.append('size', (filters.size || 20).toString());
+    params.append('sortBy', filters.sortBy || 'createdAt');
+    params.append('direction', filters.direction || 'DESC');
+    
+    // 검색 필터 파라미터
+    let endpoint = API_ENDPOINTS.JOURNALS.BASE; // 기본 엔드포인트
+    
+    const searchFilters: Partial<JournalApiDto.JournalFilters> = {};
+    
+    if (filters.market) searchFilters.market = filters.market;
+    if (filters.symbol) searchFilters.symbol = filters.symbol;
+    if (filters.tradeType) searchFilters.tradeType = filters.tradeType;
+    if (filters.isClosed !== undefined) searchFilters.isClosed = filters.isClosed;
+    
+    // 검색 필터가 하나라도 있으면, /search 엔드포인트 사용
+    if (Object.keys(searchFilters).length > 0) {
+      endpoint = API_ENDPOINTS.JOURNALS.SEARCH;
+      Object.entries(searchFilters).forEach(([key, value]) => {
+        params.append(key, String(value));
+      });
+    }
 
-    const response = await axiosInstance.get<Page<JournalSummary>>(
-      `${API_JOURNALS}?${params.toString()}`
+    const response = await axiosInstance.get<JournalPaging<JournalSummary>>(
+      `${endpoint}?${params.toString()}`
     );
     return response.data;
   },
+
 
   /**
    * 매매일지 상세 조회
    * GET /api/journals/{journalId}
    */
-  getJournalById: async (id: number): Promise<JournalApiDto> => {
-    const response = await axiosInstance.get<JournalApiDto>(
-      `${API_JOURNALS}/${id}`
+  getJournalById: async (id: number): Promise<JournalApiDto.JournalResponse> => {
+    const response = await axiosInstance.get<JournalApiDto.JournalResponse>(
+      API_ENDPOINTS.JOURNALS.BY_ID(id)
     );
     return response.data;
   },
@@ -46,11 +67,9 @@ export const journalAPI = {
    * 매매일지 생성
    * POST /api/journals
    */
-  createJournal: async (
-    data: JournalApiDto.CreateRequest
-  ): Promise<JournalApiDto> => {
-    const response = await axiosInstance.post<JournalApiDto>(
-      API_JOURNALS,
+  createJournal: async (data: JournalApiDto.CreateRequest): Promise<JournalApiDto.JournalResponse> => {
+    const response = await axiosInstance.post<JournalApiDto.JournalResponse>(
+      API_ENDPOINTS.JOURNALS.BASE,
       data
     );
     return response.data;
@@ -60,12 +79,9 @@ export const journalAPI = {
    * 매매일지 수정
    * PUT /api/journals/{journalId}
    */
-  updateJournal: async (
-    id: number,
-    data: JournalApiDto.UpdateRequest
-  ): Promise<JournalApiDto> => {
-    const response = await axiosInstance.put<JournalApiDto>(
-      `${API_JOURNALS}/${id}`,
+  updateJournal: async (id: number, data: JournalApiDto.UpdateRequest): Promise<JournalApiDto.JournalResponse> => {
+    const response = await axiosInstance.put<JournalApiDto.JournalResponse>(
+      API_ENDPOINTS.JOURNALS.BY_ID(id),
       data
     );
     return response.data;
@@ -76,7 +92,7 @@ export const journalAPI = {
    * DELETE /api/journals/{journalId}
    */
   deleteJournal: async (id: number): Promise<void> => {
-    await axiosInstance.delete(`${API_JOURNALS}/${id}`);
+    await axiosInstance.delete(API_ENDPOINTS.JOURNALS.BY_ID(id));
   },
 
   /**
@@ -85,7 +101,7 @@ export const journalAPI = {
    */
   getStatistics: async (): Promise<JournalStatistics> => {
     const response = await axiosInstance.get<JournalStatistics>(
-      `${API_JOURNALS}/statistics`
+      API_ENDPOINTS.JOURNALS.STATS
     );
     return response.data;
   },
