@@ -1,5 +1,6 @@
 package io.tbill.backendapi.domain.auth.dto;
 
+import io.tbill.backendapi.domain.user.dto.UserDto;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -27,13 +28,17 @@ public class AuthDto {
     public static class TokenInfo {
         private final String accessToken;
         private final String refreshToken;
-        private final long refreshTokenExpirationMs; // (쿠키 MaxAge 설정용)
+        private final long accessTokenExpirationMs;
+        private final long refreshTokenExpirationMs;
+        private final long accessTokenExpiresAt; // [신규] 만료 시점 타임스탬프
 
         @Builder
-        public TokenInfo(String accessToken, String refreshToken, long refreshTokenExpirationMs) {
+        public TokenInfo(String accessToken, String refreshToken, long accessTokenExpirationMs, long refreshTokenExpirationMs, long accessTokenExpiresAt) {
             this.accessToken = accessToken;
             this.refreshToken = refreshToken;
+            this.accessTokenExpirationMs = accessTokenExpirationMs;
             this.refreshTokenExpirationMs = refreshTokenExpirationMs;
+            this.accessTokenExpiresAt = accessTokenExpiresAt;
         }
     }
 
@@ -43,14 +48,13 @@ public class AuthDto {
      */
     @Getter
     public static class SignInInfo {
-        private final String username;
-        private final String email;
+        // [수정] 사용자 정보를 포함 (로그인/갱신 시 모두 반환)
+        private final UserDto.UserInfo userInfo;
         private final TokenInfo tokenInfo;
 
         @Builder
-        public SignInInfo(String username, String email, TokenInfo tokenInfo) {
-            this.username = username;
-            this.email = email;
+        public SignInInfo(UserDto.UserInfo userInfo, TokenInfo tokenInfo) {
+            this.userInfo = userInfo;
             this.tokenInfo = tokenInfo;
         }
     }

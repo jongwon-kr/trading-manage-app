@@ -24,9 +24,6 @@ public class JwtProvider {
     @Value("${jwt.secret}")
     private String secretKey;
 
-    @Value("${jwt.access-token-expiration-ms}")
-    private long accessTokenExpirationMs;
-
     @Value("${jwt.refresh-token-expiration-ms}")
     private long refreshTokenExpirationMs;
 
@@ -42,26 +39,32 @@ public class JwtProvider {
 
     /**
      * Access Token 생성
+     * [수정] AuthServiceImpl에서 계산한 만료 시점(expiresAt)을 파라미터로 받음
      */
-    public String generateAccessToken(Authentication authentication) {
-        return generateToken(authentication.getName(), accessTokenExpirationMs);
+    public String generateAccessToken(Authentication authentication, long expiresAt) {
+        return generateToken(authentication.getName(), expiresAt);
     }
 
     /**
      * Refresh Token 생성
      */
     public String generateRefreshToken(Authentication authentication) {
-        return generateToken(authentication.getName(), refreshTokenExpirationMs);
+        long now = (new Date()).getTime();
+        long expiration = now + refreshTokenExpirationMs;
+        return generateToken(authentication.getName(), expiration);
     }
 
-    private String generateToken(String subject, long expirationMs) {
+    /**
+     * [수정] 토큰 생성 로직 (만료 시점 타임스탬프를 받음)
+     */
+    private String generateToken(String subject, long expiresAt) {
         Date now = new Date();
-        Date expiration = new Date(now.getTime() + expirationMs);
+        Date expirationDate = new Date(expiresAt);
 
         return Jwts.builder()
                 .setSubject(subject) // 사용자 식별자 (email)
                 .setIssuedAt(now)
-                .setExpiration(expiration)
+                .setExpiration(expirationDate)
                 .signWith(key, SignatureAlgorithm.HS512)
                 .compact();
     }

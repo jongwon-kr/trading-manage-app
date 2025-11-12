@@ -6,7 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpHeaders; // [추가]
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.StringUtils;
@@ -19,14 +19,21 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
+    private final CookieUtil cookieUtil; // [수정] final로 선언 (RequiredArgsConstructor가 처리)
+    private static final String BEARER_PREFIX = "Bearer "; // [추가]
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        // 1. Request Header에서 Access Token 추출
-        String accessToken = resolveAccessToken(request);
+        // 1. [수정] Request Header에서 Access Token 추출
+        String authorizationHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+        String accessToken = null;
+
+        if (authorizationHeader != null && authorizationHeader.startsWith(BEARER_PREFIX)) {
+            accessToken = authorizationHeader.substring(BEARER_PREFIX.length());
+        }
 
         // 2. Access Token 검증
         if (StringUtils.hasText(accessToken) && jwtProvider.validateToken(accessToken)) {
@@ -39,16 +46,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
-    }
-
-    /**
-     * "Authorization: Bearer <TOKEN>" 헤더에서 토큰 추출
-     */
-    private String resolveAccessToken(HttpServletRequest request) {
-        String bearerToken = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
-        }
-        return null;
     }
 }

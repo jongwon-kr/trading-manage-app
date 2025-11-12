@@ -1,39 +1,40 @@
 package io.tbill.backendapi.presentation.auth.dto;
 
 import io.tbill.backendapi.domain.auth.dto.AuthDto;
+import io.tbill.backendapi.domain.user.dto.UserDto;
 import lombok.Getter;
-import lombok.Setter;
+import lombok.NoArgsConstructor;
 
 public class AuthApiDto {
 
-    /**
-     * [POST] /api/auth/sign-in (로그인 요청)
-     */
     @Getter
-    @Setter
+    @NoArgsConstructor
     public static class SignInRequest {
-        // (Validation 추가 필요)
         private String email;
         private String password;
 
         public AuthDto.SignInCommand toCommand() {
             return AuthDto.SignInCommand.builder()
-                    .email(this.email)
-                    .password(this.password)
+                    .email(email)
+                    .password(password)
                     .build();
         }
     }
 
     /**
-     * 로그인 및 토큰 재발급 응답
-     * (Access Token은 Body와 Header 모두에 제공)
+     * [수정] 로그인 및 토큰 재발급 응답 DTO
+     * (AccessToken 필드 제거 - 헤더로 전송)
      */
     @Getter
-    public static class TokenResponse {
-        private final String accessToken;
+    public static class AuthResponse {
+        private final UserDto.UserInfo user;
+        private final long accessTokenExpiresAt;
+        // [삭제] private final String accessToken;
 
-        public TokenResponse(String accessToken) {
-            this.accessToken = accessToken;
+        // [수정] 생성자에서 accessToken 제외
+        public AuthResponse(UserDto.UserInfo user, long accessTokenExpiresAt) {
+            this.user = user;
+            this.accessTokenExpiresAt = accessTokenExpiresAt;
         }
     }
 }

@@ -4,9 +4,11 @@ import io.tbill.backendapi.infrastructure.security.handler.JwtAccessDeniedHandle
 import io.tbill.backendapi.infrastructure.security.handler.JwtAuthenticationEntryPoint;
 import io.tbill.backendapi.infrastructure.security.jwt.JwtAuthenticationFilter;
 import io.tbill.backendapi.infrastructure.security.jwt.JwtProvider;
+import io.tbill.backendapi.infrastructure.security.jwt.CookieUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -21,23 +23,25 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import java.util.List; // [필수] java.util.List 임포트
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity // @PreAuthorize 등 메서드 수준 보안 활성화
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtProvider jwtProvider;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
+    private final CookieUtil cookieUtil;
 
     // 인증이 필요 없는 PUBLIC 경로
     private static final String[] PUBLIC_PATHS = {
             // 인증
             "/api/auth/**",
             "/api/users/sign-up",
-            "/api/users/check-username", // 닉네임 중복 확인
+            "/api/users/check-username",
 
             // Swagger UI
             "/swagger-ui/**",
@@ -59,26 +63,26 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 // 1. 기본 설정 비활성화
-                .csrf(AbstractHttpConfigurer::disable) // CSRF 비활성화
-                .httpBasic(AbstractHttpConfigurer::disable) // HTTP Basic 비활성화
-                .formLogin(AbstractHttpConfigurer::disable) // Form Login 비활성화
+                .csrf(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
 
                 // 2. 세션 관리: STATELESS (JWT 사용)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // 3. CORS 설정
+                // 3. CORS 설정 (이것이 OPTIONS 요청을 처리해야 함)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
                 // 4. API 경로별 권한 설정
                 .authorizeHttpRequests(authz -> authz
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(PUBLIC_PATHS).permitAll() // PUBLIC 경로는 모두 허용
                         .anyRequest().authenticated() // 그 외 모든 경로는 인증 필요
                 )
 
-                // 5. JWT 필터 추가
-                // JwtAuthenticationFilter를 UsernamePasswordAuthenticationFilter 전에 추가
-                .addFilterBefore(new JwtAuthenticationFilter(jwtProvider),
+                // 5. JWT 필터 추가 (Authorization 헤더를 검사)
+                .addFilterBefore(new JwtAuthenticationFilter(jwtProvider, cookieUtil),
                         UsernamePasswordAuthenticationFilter.class)
 
                 // 6. 예외 처리 핸들러
@@ -92,16 +96,15 @@ public class SecurityConfig {
 
     /**
      * CORS 설정 (Cross-Origin Resource Sharing)
-     * (주의) 실제 운영 환경에서는 "allowedOrigins"를 구체적으로 명시해야 합니다.
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowCredentials(true); // 쿠키 허용
+        config.setAllowCredentials(true);
         config.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:8080", "http://localhost:5173"));
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        config.setAllowedHeaders(Arrays.asList("*")); // 모든 헤더 허용
-        config.setExposedHeaders(Arrays.asList("Authorization")); // Access Token 헤더 노출
+        config.setAllowedHeaders(Arrays.asList("*"));
+        config.setExposedHeaders(List.of("access", "Authorization"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

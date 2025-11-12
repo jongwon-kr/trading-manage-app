@@ -1,6 +1,7 @@
 package io.tbill.backendapi.domain.auth.service;
 
 import io.tbill.backendapi.domain.auth.dto.AuthDto;
+import io.tbill.backendapi.domain.user.dto.UserDto;
 import io.tbill.backendapi.domain.user.entity.User;
 import io.tbill.backendapi.domain.user.repository.UserRepository;
 import io.tbill.backendapi.infrastructure.security.jwt.JwtProvider;
@@ -14,6 +15,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Date;
+
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
@@ -24,6 +27,9 @@ public class AuthServiceImpl implements AuthService {
     private final JwtProvider jwtProvider;
     private final RefreshTokenService refreshTokenService;
 
+    @Value("${jwt.access-token-expiration-ms}")
+    private long accessTokenExpirationMs;
+
     @Value("${jwt.refresh-token-expiration-ms}")
     private long refreshTokenExpirationMs;
 
@@ -32,25 +38,19 @@ public class AuthServiceImpl implements AuthService {
      */
     @Transactional
     public AuthDto.SignInInfo signIn(AuthDto.SignInCommand command) {
-        // 1. 사용자 조회
         User user = userRepository.findByEmail(command.getEmail())
                 .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다."));
 
-        // 2. 비밀번호 검증
         if (!passwordEncoder.matches(command.getPassword(), user.getPassword())) {
             throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         }
 
-        // 3. 인증 객체 생성
         Authentication authentication = new UsernamePasswordAuthenticationToken(user.getEmail(), user.getPassword());
 
-        // 4. 토큰 생성
         AuthDto.TokenInfo tokenInfo = generateTokens(authentication);
 
-        // 5. 로그인 응답 반환
         return AuthDto.SignInInfo.builder()
-                .username(user.getUsername())
-                .email(user.getEmail())
+                .userInfo(UserDto.UserInfo.from(user))
                 .tokenInfo(tokenInfo)
                 .build();
     }
@@ -60,15 +60,15 @@ public class AuthServiceImpl implements AuthService {
      */
     @Transactional
     public void logout(String email) {
-        // Redis에서 Refresh Token 삭제
         refreshTokenService.deleteToken(email);
     }
 
     /**
      * 토큰 재발급
+     * [수정] 요청사항 반영: AccessToken만 갱신하고, RefreshToken은 갱신하지 않음.
      */
     @Transactional
-    public AuthDto.TokenInfo reissueTokens(String refreshToken) {
+    public AuthDto.SignInInfo reissueTokens(String refreshToken) {
         // 1. Refresh Token 검증
         if (!jwtProvider.validateToken(refreshToken)) {
             throw new IllegalArgumentException("유효하지 않은 Refresh Token입니다.");
@@ -86,18 +86,42 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("Refresh Token이 일치하지 않습니다.");
         }
 
-        // 4. 새 토큰 생성 및 반환
-        return generateTokens(authentication);
+        // 4. [수정] AccessToken만 새로 생성 (만료시간 = 현재 + 30분)
+        long now = (new Date()).getTime();
+        long newAccessTokenExpiresAt = now + accessTokenExpirationMs;
+        String newAccessToken = jwtProvider.generateAccessToken(authentication, newAccessTokenExpiresAt);
+
+        // 5. [수정] 새 TokenInfo DTO 생성 (RefreshToken 관련 정보는 기존 값/null)
+        AuthDto.TokenInfo tokenInfo = AuthDto.TokenInfo.builder()
+                .accessToken(newAccessToken)
+                .accessTokenExpirationMs(accessTokenExpirationMs)
+                .accessTokenExpiresAt(newAccessTokenExpiresAt)
+                .refreshToken(refreshToken) // RefreshToken은 기존 값
+                .refreshTokenExpirationMs(refreshTokenExpirationMs) // 유효기간도 기존 값
+                .build();
+
+        // 6. 사용자 정보 조회
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다."));
+
+        // 7. 응답 반환
+        return AuthDto.SignInInfo.builder()
+                .userInfo(UserDto.UserInfo.from(user))
+                .tokenInfo(tokenInfo)
+                .build();
     }
 
 
     /**
-     * (공통) Access/Refresh 토큰 생성 및 Redis 저장
+     * (공통) Access/Refresh 토큰 생성 및 Redis 저장 (로그인 시 사용)
      */
     private AuthDto.TokenInfo generateTokens(Authentication authentication) {
         String email = authentication.getName();
 
-        String accessToken = jwtProvider.generateAccessToken(authentication);
+        long now = (new Date()).getTime();
+        long accessTokenExpiresAt = now + accessTokenExpirationMs;
+
+        String accessToken = jwtProvider.generateAccessToken(authentication, accessTokenExpiresAt);
         String refreshToken = jwtProvider.generateRefreshToken(authentication);
 
         // Redis에 Refresh Token 저장
@@ -106,7 +130,9 @@ public class AuthServiceImpl implements AuthService {
         return AuthDto.TokenInfo.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
+                .accessTokenExpirationMs(accessTokenExpirationMs)
                 .refreshTokenExpirationMs(refreshTokenExpirationMs)
+                .accessTokenExpiresAt(accessTokenExpiresAt)
                 .build();
     }
 }
