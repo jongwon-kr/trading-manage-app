@@ -46,6 +46,7 @@ dependencies {
     // utility
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 
     // tools
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
