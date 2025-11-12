@@ -28,7 +28,7 @@ import {
   setJournalStats,
   setJournalFilters,
 } from '@/store/slices/tradingSlice'
-import { mockTrades, mockJournalStats } from '@/lib/mock-trading-data'
+import { mockTrades, mockJournalStats } from '@/mock/mock-trading-data'
 import { Trade } from '@/types/trading'
 import { JournalEntryForm } from '@/components/journal/JournalEntryForm'
 

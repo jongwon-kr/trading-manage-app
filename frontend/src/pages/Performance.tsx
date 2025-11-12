@@ -31,7 +31,7 @@ import {
   mockSectorAnalysis,
   mockStrategyPerformance,
   mockRiskMetrics
-} from '@/lib/mock-performance-data'
+} from '@/mock/mock-performance-data'
 
 export function Performance() {
   const dispatch = useAppDispatch()

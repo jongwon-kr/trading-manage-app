@@ -1,0 +1,110 @@
+import { Trade, TradingJournalStats } from '@/types/trading'
+
+export const mockTrades: Trade[] = [
+  {
+    id: 'trade-001',
+    symbol: 'AAPL',
+    name: 'Apple Inc.',
+    type: 'long',
+    status: 'closed',
+    entryDate: '2024-11-01',
+    exitDate: '2024-11-03',
+    entryPrice: 175.50,
+    exitPrice: 182.25,
+    quantity: 100,
+    strategy: 'Momentum Breakout',
+    sector: 'Technology',
+    preAnalysis: 'AAPL이 저항선을 돌파했고, 거래량이 평균보다 150% 증가. RSI는 65로 과매수 구간은 아님. 실적 발표 전 포지션 진입.',
+    postAnalysis: ' 예상대로 실적 발표 후 상승. 목표가 달성으로 매도. 전략대로 실행됨.',
+    emotions: '처음에는 불안했지만, 분석대로 움직여서 자신감 상승',
+    confidence: 8,
+    realizedPnL: 675,
+    returnPercentage: 3.85,
+    tags: ['실적플레이', '기술적분석', '모멘텀'],
+    notes: '다음에는 포지션 크기를 늘려볼 만함',
+    createdAt: '2024-11-01T09:30:00Z',
+    updatedAt: '2024-11-03T15:45:00Z'
+  },
+  {
+    id: 'trade-002',
+    symbol: 'TSLA',
+    name: 'Tesla Inc.',
+    type: 'short',
+    status: 'closed',
+    entryDate: '2024-11-05',
+    exitDate: '2024-11-06',
+    entryPrice: 248.50,
+    exitPrice: 242.10,
+    quantity: 50,
+    strategy: 'Reversal Play',
+    sector: 'Consumer Cyclical',
+    preAnalysis: '과매수 구간에서 약화 신호 감지. 볼린저밴드 상단 접촉 후 하락 징조. 거래량 감소 확인.',
+    postAnalysis: '예상보다 빨리 하락. 리스크 관리 잘됨. 단기 반등 전에 적절히 청산.',
+    emotions: '공매도라 긴장했지만 계획대로 실행',
+    confidence: 7,
+    realizedPnL: 320,
+    returnPercentage: 2.57,
+    tags: ['공매도', '기술적분석', '반전'],
+    createdAt: '2024-11-05T10:15:00Z',
+    updatedAt: '2024-11-06T14:20:00Z'
+  },
+  {
+    id: 'trade-003',
+    symbol: 'MSFT',
+    name: 'Microsoft Corp.',
+    type: 'long',
+    status: 'open',
+    entryDate: '2024-11-07',
+    entryPrice: 410.75,
+    quantity: 75,
+    strategy: 'Support Bounce',
+    sector: 'Technology',
+    preAnalysis: 'MSFT가 주요 지지선 410 근처에서 반등 시도. 클라우드 부문 성장세 지속. RSI 30 근처에서 바닥 확인.',
+    emotions: '지지선 테스트 구간이라 조심스럽지만 기대됨',
+    confidence: 6,
+    currentPrice: 415.20,
+    unrealizedPnL: 333.75,
+    returnPercentage: 1.08,
+    tags: ['지지선', '기술적분석', '클라우드'],
+    notes: '415 돌파시 추가 매수 고려',
+    createdAt: '2024-11-07T11:00:00Z',
+    updatedAt: '2024-11-07T11:00:00Z'
+  },
+  {
+    id: 'trade-004',
+    symbol: 'NVDA',
+    name: 'NVIDIA Corp.',
+    type: 'long',
+    status: 'open',
+    entryDate: '2024-11-08',
+    entryPrice: 485.30,
+    quantity: 25,
+    strategy: 'AI Theme Play',
+    sector: 'Technology',
+    preAnalysis: 'AI 반도체 섹터 강세 지속. NVDA 실적 시즌 임박, 데이터센터 수요 증가 기대. 기술적으로도 상승 삼각형 패턴.',
+    emotions: 'AI 테마에 대한 확신이 있어서 적극적으로 진입',
+    confidence: 9,
+    currentPrice: 492.80,
+    unrealizedPnL: 187.50,
+    returnPercentage: 1.55,
+    tags: ['AI', '반도체', '테마투자'],
+    createdAt: '2024-11-08T09:45:00Z',
+    updatedAt: '2024-11-08T09:45:00Z'
+  }
+]
+
+export const mockJournalStats: TradingJournalStats = {
+  totalTrades: 4,
+  openTrades: 2,
+  closedTrades: 2,
+  winRate: 100, // 2승 0패
+  avgWin: 497.5, // (675 + 320) / 2
+  avgLoss: 0,
+  profitFactor: Infinity, // 손실이 0이므로
+  totalReturn: 1516.25, // 995 (실현) + 521.25 (미실현)
+  bestTrade: 675,
+  worstTrade: 320,
+  currentStreak: 2,
+  longestWinStreak: 2,
+  longestLossStreak: 0
+}

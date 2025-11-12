@@ -23,7 +23,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { useAppDispatch, useAppSelector } from "@/store/hooks" // ✅ Redux hooks
 import { setActivePage, ActivePage } from "@/store/slices/pageSlice" // ✅ Redux action
-import { cn } from "@/lib/utils"
+import { cn } from "@/utils/shadcn-util"
 
 const menuItems = [
   {

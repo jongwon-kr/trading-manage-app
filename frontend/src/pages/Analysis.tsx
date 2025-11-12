@@ -26,7 +26,7 @@ import {
   removeFromWatchlist,
   updateStockPrice 
 } from '@/store/slices/tradingSlice'
-import { mockPreMarketAnalysis, mockMarketData } from '@/lib/mock-data'
+import { mockPreMarketAnalysis, mockMarketData } from '@/mock/mock-data'
 import { MarketData } from '@/types/analysis'
 
 export function Analysis() {
