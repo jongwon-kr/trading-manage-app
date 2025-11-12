@@ -24,11 +24,12 @@ public class JournalDto {
         private final BigDecimal entryPrice;
         private final BigDecimal stopLossPrice;
         private final String reasoning;
+        private final BigDecimal realizedPnL;
 
         @Builder
         public CreateCommand(String authorEmail, MarketType market, String symbol,
                              TradeType tradeType, BigDecimal quantity,
-                             BigDecimal entryPrice, BigDecimal stopLossPrice, String reasoning) {
+                             BigDecimal entryPrice, BigDecimal stopLossPrice, String reasoning, BigDecimal realizedPnL) {
             this.authorEmail = authorEmail;
             this.market = market;
             this.symbol = symbol;
@@ -37,6 +38,7 @@ public class JournalDto {
             this.entryPrice = entryPrice;
             this.stopLossPrice = stopLossPrice;
             this.reasoning = reasoning;
+            this.realizedPnL = realizedPnL;
         }
 
         public Journal toEntity() {
@@ -93,16 +95,18 @@ public class JournalDto {
         private final LocalDateTime startDate;
         private final LocalDateTime endDate;
         private final Boolean isClosed; // true: 종료된 거래, false: 진행중, null: 전체
+        private final TradeType tradeType;
 
         @Builder
         public SearchCondition(String authorEmail, MarketType market, String symbol,
-                               LocalDateTime startDate, LocalDateTime endDate, Boolean isClosed) {
+                               LocalDateTime startDate, LocalDateTime endDate, Boolean isClosed, TradeType tradeType) {
             this.authorEmail = authorEmail;
             this.market = market;
             this.symbol = symbol;
             this.startDate = startDate;
             this.endDate = endDate;
             this.isClosed = isClosed;
+            this.tradeType = tradeType;
         }
     }
 

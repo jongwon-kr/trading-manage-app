@@ -1,5 +1,6 @@
 package io.tbill.backendapi.presentation.journal.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.tbill.backendapi.domain.journal.dto.JournalDto;
 import io.tbill.backendapi.domain.journal.entity.MarketType;
@@ -8,10 +9,12 @@ import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.domain.Page; // [추가]
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class JournalApiDto {
 
@@ -34,6 +37,7 @@ public class JournalApiDto {
     @Getter
     @Setter
     @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class CreateRequest {
         @NotNull(message = "시장 타입은 필수입니다")
         private MarketType market;
@@ -58,6 +62,8 @@ public class JournalApiDto {
 
         private ReasoningDto reasoning;
 
+        private BigDecimal realizedPnL;
+
         public JournalDto.CreateCommand toCommand(String authorEmail) {
             String reasoningJson = null;
             try {
@@ -77,18 +83,19 @@ public class JournalApiDto {
                     .entryPrice(this.entryPrice)
                     .stopLossPrice(this.stopLossPrice)
                     .reasoning(reasoningJson)
+                    .realizedPnL(this.realizedPnL)
                     .build();
         }
     }
 
     /**
-     * 매매일지 수정 요청 (새로 추가)
+     * 매매일지 수정 요청
      */
     @Getter
     @Setter
     @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class UpdateRequest {
-
         private TradeType tradeType;
 
         @DecimalMin(value = "0.0", inclusive = false, message = "수량은 0보다 커야 합니다")
@@ -100,7 +107,7 @@ public class JournalApiDto {
         @DecimalMin(value = "0.0", inclusive = false, message = "손절가는 0보다 커야 합니다")
         private BigDecimal stopLossPrice;
 
-        private BigDecimal realizedPnL; // 손익 입력
+        private BigDecimal realizedPnL;
 
         private ReasoningDto reasoning;
 
@@ -117,18 +124,18 @@ public class JournalApiDto {
             return JournalDto.UpdateCommand.builder()
                     .id(id)
                     .authorEmail(authorEmail)
+                    .tradeType(this.tradeType)
+                    .quantity(this.quantity)
                     .entryPrice(this.entryPrice)
                     .stopLossPrice(this.stopLossPrice)
                     .realizedPnL(this.realizedPnL)
                     .reasoning(reasoningJson)
-                    .tradeType(this.tradeType)
-                    .quantity(this.quantity)
                     .build();
         }
     }
 
     /**
-     * 매매일지 검색 요청 (새로 추가)
+     * 매매일지 검색 요청
      */
     @Getter
     @Setter
@@ -139,6 +146,7 @@ public class JournalApiDto {
         private LocalDateTime startDate;
         private LocalDateTime endDate;
         private Boolean isClosed;
+        private TradeType tradeType;
 
         public JournalDto.SearchCondition toSearchCondition(String authorEmail) {
             return JournalDto.SearchCondition.builder()
@@ -148,6 +156,7 @@ public class JournalApiDto {
                     .startDate(this.startDate)
                     .endDate(this.endDate)
                     .isClosed(this.isClosed)
+                    .tradeType(this.tradeType)
                     .build();
         }
     }
@@ -196,7 +205,7 @@ public class JournalApiDto {
     }
 
     /**
-     * 매매일지 목록 응답 (새로 추가 - 경량화)
+     * 매매일지 목록 응답 (요약)
      */
     @Getter
     public static class JournalSummaryResponse {
@@ -224,7 +233,7 @@ public class JournalApiDto {
     }
 
     /**
-     * 통계 응답 (새로 추가)
+     * 통계 응답
      */
     @Getter
     public static class StatisticsResponse {
@@ -240,6 +249,28 @@ public class JournalApiDto {
             this.closedTrades = statistics.getClosedTrades();
             this.openTrades = statistics.getOpenTrades();
             this.winRate = statistics.getWinRate();
+        }
+    }
+
+    /**
+     * [신규] Page<T> 응답을 감싸는 DTO (PageImpl 직렬화 문제 해결용)
+     */
+    @Getter
+    public static class PagedResponse<T> {
+        private final List<T> content;
+        private final int pageNumber;
+        private final int pageSize;
+        private final long totalElements;
+        private final int totalPages;
+        private final boolean isLast;
+
+        public PagedResponse(Page<T> page) {
+            this.content = page.getContent();
+            this.pageNumber = page.getNumber();
+            this.pageSize = page.getSize();
+            this.totalElements = page.getTotalElements();
+            this.totalPages = page.getTotalPages();
+            this.isLast = page.isLast();
         }
     }
 }

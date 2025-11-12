@@ -84,9 +84,10 @@ public class JournalController {
     /**
      * 내 매매일지 목록 조회 (페이징)
      * [GET] /api/journals?page=0&size=20&sortBy=createdAt&direction=DESC
+     * [수정] 반환 타입을 Page -> PagedResponse로 변경 (500 에러 해결)
      */
     @GetMapping
-    public ResponseEntity<Page<JournalApiDto.JournalSummaryResponse>> getMyJournals(
+    public ResponseEntity<JournalApiDto.PagedResponse<JournalApiDto.JournalSummaryResponse>> getMyJournals(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
@@ -99,18 +100,20 @@ public class JournalController {
         Page<JournalDto.JournalSummary> journalSummaries =
                 journalService.getMyJournals(currentUserEmail, pageable);
 
-        Page<JournalApiDto.JournalSummaryResponse> responses =
+        Page<JournalApiDto.JournalSummaryResponse> responsesPage =
                 journalSummaries.map(JournalApiDto.JournalSummaryResponse::new);
 
-        return ResponseEntity.ok(responses);
+        // Page<Response> -> PagedResponse<Response>
+        return ResponseEntity.ok(new JournalApiDto.PagedResponse<>(responsesPage));
     }
 
     /**
      * 매매일지 검색
-     * [GET] /api/journals/search?market=STOCK&symbol=AAPL&isClosed=true
+     * [GET] /api/journals/search
+     * [수정] 반환 타입을 Page -> PagedResponse로 변경 (500 에러 해결)
      */
     @GetMapping("/search")
-    public ResponseEntity<Page<JournalApiDto.JournalSummaryResponse>> searchJournals(
+    public ResponseEntity<JournalApiDto.PagedResponse<JournalApiDto.JournalSummaryResponse>> searchJournals(
             @ModelAttribute JournalApiDto.SearchRequest searchRequest,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -125,18 +128,19 @@ public class JournalController {
         Page<JournalDto.JournalSummary> journalSummaries =
                 journalService.searchJournals(condition, pageable);
 
-        Page<JournalApiDto.JournalSummaryResponse> responses =
+        Page<JournalApiDto.JournalSummaryResponse> responsesPage =
                 journalSummaries.map(JournalApiDto.JournalSummaryResponse::new);
 
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(new JournalApiDto.PagedResponse<>(responsesPage));
     }
 
     /**
      * 진행 중인 거래 조회
      * [GET] /api/journals/open
+     * [수정] 반환 타입을 Page -> PagedResponse로 변경 (500 에러 해결)
      */
     @GetMapping("/open")
-    public ResponseEntity<Page<JournalApiDto.JournalSummaryResponse>> getOpenTrades(
+    public ResponseEntity<JournalApiDto.PagedResponse<JournalApiDto.JournalSummaryResponse>> getOpenTrades(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
@@ -146,18 +150,19 @@ public class JournalController {
         Page<JournalDto.JournalSummary> journalSummaries =
                 journalService.getOpenTrades(currentUserEmail, pageable);
 
-        Page<JournalApiDto.JournalSummaryResponse> responses =
+        Page<JournalApiDto.JournalSummaryResponse> responsesPage =
                 journalSummaries.map(JournalApiDto.JournalSummaryResponse::new);
 
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(new JournalApiDto.PagedResponse<>(responsesPage));
     }
 
     /**
      * 종료된 거래 조회
      * [GET] /api/journals/closed
+     * [수정] 반환 타입을 Page -> PagedResponse로 변경 (500 에러 해결)
      */
     @GetMapping("/closed")
-    public ResponseEntity<Page<JournalApiDto.JournalSummaryResponse>> getClosedTrades(
+    public ResponseEntity<JournalApiDto.PagedResponse<JournalApiDto.JournalSummaryResponse>> getClosedTrades(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
@@ -167,10 +172,10 @@ public class JournalController {
         Page<JournalDto.JournalSummary> journalSummaries =
                 journalService.getClosedTrades(currentUserEmail, pageable);
 
-        Page<JournalApiDto.JournalSummaryResponse> responses =
+        Page<JournalApiDto.JournalSummaryResponse> responsesPage =
                 journalSummaries.map(JournalApiDto.JournalSummaryResponse::new);
 
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(new JournalApiDto.PagedResponse<>(responsesPage));
     }
 
     /**
