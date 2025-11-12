@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/reduxHooks';
 import { registerUser } from '../../store/slices/authSlice';
-import { Input } from '@shadcn/ui';
-import { Button } from '@shadcn/ui';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 const Register = () => {
   const dispatch = useAppDispatch();

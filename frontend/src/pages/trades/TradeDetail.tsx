@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Button } from '@shadcn/ui';
+import { Button } from '@/components/ui/button';
 import { useNavigate, useParams } from 'react-router-dom';
 
 const dummyTrade = {

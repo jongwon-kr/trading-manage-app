@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Input } from '@shadcn/ui';
-import { Button } from '@shadcn/ui';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 const TradeForm = () => {
   const navigate = useNavigate();

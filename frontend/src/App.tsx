@@ -47,7 +47,7 @@ function App() {
                   <Analysis />
                 </ProtectedRoute>
               } />
-              <Route path="/" element={<Login />} />
+              <Route path="/" element={<Dashboard />} />
             </Routes>
           </Layout>
         </React.Suspense>
