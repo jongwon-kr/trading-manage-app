@@ -1,5 +1,3 @@
-// Authentication related types
-
 export interface User {
   id: number;
   username: string;
@@ -9,7 +7,7 @@ export interface User {
 }
 
 export interface LoginRequest {
-  username: string;
+  email: string; 
   password: string;
 }
 
@@ -17,11 +15,10 @@ export interface RegisterRequest {
   username: string;
   email: string;
   password: string;
-  confirmPassword?: string;
 }
 
 export interface AuthResponse {
-  token: string;
+  accessToken: string;
   user: User;
   refreshToken?: string;
 }

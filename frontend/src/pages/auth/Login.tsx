@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-// --- 경로 수정 ---
 import { useAppDispatch } from '@/hooks/reduxHooks';
 import { loginUser } from '@/store/slices/authSlice';
-// --- 경로 수정 ---
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { LoginRequest } from '@/types/auth.types';
 
 const Login = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
@@ -18,10 +17,12 @@ const Login = () => {
     e.preventDefault();
     setError('');
     try {
-      // loginUser thunk dispatch
-      const result = await dispatch(loginUser({ username, password }));
+      const credentials: LoginRequest = { email, password }; 
+      
+      const result = await dispatch(loginUser(credentials));
+      
       if (loginUser.fulfilled.match(result)) {
-        navigate('/dashboard');
+        navigate('/');
       } else {
         setError(result.payload as string);
       }
@@ -36,11 +37,12 @@ const Login = () => {
         <h1 className="text-2xl font-bold text-center">로그인</h1>
         <form className="space-y-4" onSubmit={handleSubmit}>
           <Input
-            type="text"
-            placeholder="아이디"
-            value={username}
-            onChange={e => setUsername(e.target.value)}
+            type="email"
+            placeholder="이메일"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
             required
+            autoComplete="email"
           />
           <Input
             type="password"
@@ -48,6 +50,7 @@ const Login = () => {
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
+            autoComplete="current-password"
           />
           {error && (
             <div className="text-sm text-red-500 text-center">{error}</div>

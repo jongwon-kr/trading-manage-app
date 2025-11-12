@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-// --- 경로 수정 ---
 import { useAppDispatch } from '@/hooks/reduxHooks';
 import { registerUser } from '@/store/slices/authSlice';
-// --- 경로 수정 ---
+import { authAPI } from '@/api/auth.api'; 
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Check, X, Loader2 } from 'lucide-react'; 
+import { toast } from "sonner"; // [추가] toast 임포트
 
 const Register = () => {
   const dispatch = useAppDispatch();
@@ -16,21 +17,69 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
 
+  // 닉네임 중복 확인 상태
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [isUsernameAvailable, setIsUsernameAvailable] = useState<boolean | null>(null);
+  const [usernameCheckMessage, setUsernameCheckMessage] = useState('');
+
+  // 닉네임 변경 시 중복 확인 상태 초기화
+  useEffect(() => {
+    setIsUsernameAvailable(null);
+    setUsernameCheckMessage('');
+  }, [username]);
+
+  // 닉네임 중복 확인 핸들러
+  const handleCheckUsername = async () => {
+    if (!username) {
+      setUsernameCheckMessage('닉네임을 입력해주세요.');
+      return;
+    }
+    setIsCheckingUsername(true);
+    setUsernameCheckMessage('');
+    try {
+      const { isAvailable } = await authAPI.checkUsername(username);
+      if (isAvailable) {
+        setIsUsernameAvailable(true);
+        setUsernameCheckMessage('사용 가능한 닉네임입니다.');
+      } else {
+        setIsUsernameAvailable(false);
+        setUsernameCheckMessage('이미 사용 중인 닉네임입니다.');
+      }
+    } catch (err) {
+      setIsUsernameAvailable(false);
+      setUsernameCheckMessage('중복 확인 중 오류가 발생했습니다.');
+    } finally {
+      setIsCheckingUsername(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
     if (!username || !email || !password || !confirmPassword) {
       setError('모든 필드를 입력해주세요.');
       return;
     }
+    // 프론트엔드에서만 비밀번호 일치 여부 확인
     if (password !== confirmPassword) {
       setError('비밀번호가 일치하지 않습니다.');
       return;
     }
+    
+    if (isUsernameAvailable !== true) {
+      setError('닉네임 중복 확인을 해주세요.');
+      return;
+    }
+    
     try {
-      const result = await dispatch(registerUser({ username, email, password, confirmPassword }));
+      // API 요청 시 confirmPassword 제외
+      const result = await dispatch(registerUser({ username, email, password }));
+      
       if (registerUser.fulfilled.match(result)) {
-        navigate('/dashboard');
+        // [수정] 회원가입 성공 시 로그인 페이지로 이동
+        toast.success("회원가입 성공!", { description: "이제 로그인해주세요." });
+        navigate('/login'); 
       } else {
         setError(result.payload as string);
       }
@@ -42,21 +91,52 @@ const Register = () => {
   return (
     <div className="flex min-h-[70vh] items-center justify-center">
       <div className="w-full max-w-md p-6 space-y-6 rounded-lg bg-white shadow">
-        <h1 className="text-2xl font-bold text-center">회원가입</h1>
+        <h1 className="text-2xl font-bold text-center"></h1>
         <form className="space-y-4" onSubmit={handleSubmit}>
-          <Input
-            type="text"
-            placeholder="아이디"
-            value={username}
-            onChange={e => setUsername(e.target.value)}
-            required
-          />
+          
+          {/* 닉네임(username) 입력 필드 + 중복 확인 버튼 */}
+          <div className="space-y-2">
+            <label htmlFor="username" className="text-sm font-medium">닉네임</label>
+            <div className="flex gap-2">
+              <Input
+                id="username"
+                type="text"
+                placeholder="사용할 닉네임"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                required
+                autoComplete="username"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCheckUsername}
+                disabled={isCheckingUsername}
+                className="w-28" // 버튼 너비 고정
+              >
+                {isCheckingUsername ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  '중복 확인'
+                )}
+              </Button>
+            </div>
+            {/* 닉네임 중복 확인 메시지 */}
+            {usernameCheckMessage && (
+              <p className={`text-xs ${isUsernameAvailable ? 'text-green-600' : 'text-red-600'} flex items-center gap-1`}>
+                {isUsernameAvailable ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                {usernameCheckMessage}
+              </p>
+            )}
+          </div>
+          
           <Input
             type="email"
             placeholder="이메일"
             value={email}
             onChange={e => setEmail(e.target.value)}
             required
+            autoComplete="email"
           />
           <Input
             type="password"
@@ -64,6 +144,7 @@ const Register = () => {
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
+            autoComplete="new-password"
           />
           <Input
             type="password"
@@ -71,11 +152,16 @@ const Register = () => {
             value={confirmPassword}
             onChange={e => setConfirmPassword(e.target.value)}
             required
+            autoComplete="new-password"
           />
+          
           {error && (
             <div className="text-sm text-red-500 text-center">{error}</div>
           )}
-          <Button type="submit" className="w-full">회원가입</Button>
+          
+          <Button type="submit" className="w-full" disabled={!isUsernameAvailable}>
+            회원가입
+          </Button>
           <Button type="button" variant="outline" className="w-full" onClick={() => navigate('/login')}>
             로그인
           </Button>
