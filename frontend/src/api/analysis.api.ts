@@ -1,7 +1,6 @@
 import axiosInstance from './axios';
 import { AnalysisResult } from '@/types/analysis.types';
-
-const API_ANALYSIS = '/analysis';
+import { API_ENDPOINTS } from '@/utils/constants';
 
 interface AnalysisRequestResponse {
   requestId: string;
@@ -19,8 +18,9 @@ export const analysisAPI = {
     timeframe: string = '1d'
   ): Promise<AnalysisRequestResponse> => {
     const params = new URLSearchParams({ symbol, market, timeframe });
+    // [수정] API_ENDPOINTS.ANALYSIS.TECHNICAL 사용
     const response = await axiosInstance.post<AnalysisRequestResponse>(
-      `${API_ANALYSIS}/technical?${params.toString()}`
+      `${API_ENDPOINTS.ANALYSIS.TECHNICAL}?${params.toString()}`
     );
     return response.data;
   },
@@ -30,8 +30,9 @@ export const analysisAPI = {
    * GET /api/analysis/result/{requestId}
    */
   getAnalysisResult: async (requestId: string): Promise<AnalysisResult> => {
+    // [수정] API_ENDPOINTS.ANALYSIS.RESULT 사용
     const response = await axiosInstance.get<AnalysisResult>(
-      `${API_ANALYSIS}/result/${requestId}`
+      API_ENDPOINTS.ANALYSIS.RESULT(requestId)
     );
     return response.data;
   },
@@ -41,8 +42,9 @@ export const analysisAPI = {
     market: string = 'STOCK'
   ): Promise<AnalysisRequestResponse> => {
      const params = new URLSearchParams({ market });
+     // [수정] API_ENDPOINTS.ANALYSIS.MARKET_TREND 사용
      const response = await axiosInstance.post<AnalysisRequestResponse>(
-      `${API_ANALYSIS}/market-trend?${params.toString()}`
+      `${API_ENDPOINTS.ANALYSIS.MARKET_TREND}?${params.toString()}`
     );
     return response.data;
   }
