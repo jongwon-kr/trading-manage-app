@@ -106,3 +106,10 @@
     color-adjust: exact;
   }
 }
+
+/* Sonner (Toaster) 스타일 */
+:root {
+  --sonner-toast-background: hsl(var(--background));
+  --sonner-toast-text: hsl(var(--foreground));
+  --sonner-toast-border: hsl(var(--border));
+}

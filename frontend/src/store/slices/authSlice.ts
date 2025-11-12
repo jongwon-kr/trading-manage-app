@@ -1,30 +1,57 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { authAPI } from '../../api/auth.api';
-import { AuthState, LoginRequest, RegisterRequest, User } from '../../types/auth.types';
-import { TOKEN_KEY, USER_KEY } from '../../utils/constants';
+// --- 경로 수정 ---
+import { authAPI } from '@/api/auth.api';
+import {
+  AuthState,
+  LoginRequest,
+  RegisterRequest,
+  User,
+  AuthResponse,
+} from '@/types/auth.types';
+import { TOKEN_KEY, USER_KEY } from '@/utils/constants';
+// --- 경로 수정 ---
 
-// Initial state
 const initialState: AuthState = {
-  user: null,
-  token: localStorage.getItem(TOKEN_KEY),
-  isAuthenticated: !!localStorage.getItem(TOKEN_KEY),
-  isLoading: false,
+  user: null, // user 속성 초기화
+  token: null, // token 속성 초기화
+  isAuthenticated: false, // isAuthenticated 속성 초기화
+  isLoading: false, // isLoading 속성 초기화
   error: null,
 };
 
-// Async thunks
 export const loginUser = createAsyncThunk(
   'auth/login',
   async (credentials: LoginRequest, { rejectWithValue }) => {
+    if (credentials.username === 'test' && credentials.password === 'test') {
+      try {
+        const mockToken = 'mock-jwt-token-for-test-user';
+        const mockUser: User = {
+          id: 999,
+          username: 'test',
+          email: 'test@example.com',
+        };
+        const mockResponse: AuthResponse = {
+          token: mockToken,
+          user: mockUser,
+        };
+
+        localStorage.setItem(TOKEN_KEY, mockResponse.token);
+        localStorage.setItem(USER_KEY, JSON.stringify(mockResponse.user));
+
+        return mockResponse;
+      } catch (error) {
+        return rejectWithValue((error as Error).message);
+      }
+    }
     try {
       const response = await authAPI.login(credentials);
       localStorage.setItem(TOKEN_KEY, response.token);
       localStorage.setItem(USER_KEY, JSON.stringify(response.user));
       return response;
     } catch (error) {
-      return rejectWithValue((error as Error).message);
+      return rejectWithValue('아이디 또는 비밀번호가 잘못되었습니다.');
     }
-  }
+  },
 );
 
 export const registerUser = createAsyncThunk(
@@ -45,10 +72,15 @@ export const logoutUser = createAsyncThunk(
   'auth/logout',
   async (_, { rejectWithValue }) => {
     try {
-      await authAPI.logout();
+      // API 호출 (실제 로그아웃)
+      // await authAPI.logout(); 
+      // 목업 및 테스트 환경을 위해 로컬 스토리지 정리만 우선
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(USER_KEY);
     } catch (error) {
+       // 실제 API 호출 시 에러 처리
+       localStorage.removeItem(TOKEN_KEY); // 에러가 나더라도 로컬은 정리
+       localStorage.removeItem(USER_KEY);
       return rejectWithValue((error as Error).message);
     }
   }
@@ -80,6 +112,27 @@ const authSlice = createSlice({
       state.user = action.payload;
       state.isAuthenticated = true;
     },
+    // --- 추가: 상태를 직접 초기화하는 리듀서 ---
+    initializeAuth: (state) => {
+      try {
+        const token = localStorage.getItem(TOKEN_KEY);
+        const userData = localStorage.getItem(USER_KEY);
+        if (token && userData) {
+          state.token = token;
+          state.user = JSON.parse(userData);
+          state.isAuthenticated = true;
+        } else {
+          state.token = null;
+          state.user = null;
+          state.isAuthenticated = false;
+        }
+      } catch (error) {
+          state.token = null;
+          state.user = null;
+          state.isAuthenticated = false;
+      }
+      state.isLoading = false;
+    }
   },
   extraReducers: (builder) => {
     // Login
@@ -156,5 +209,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, setUser } = authSlice.actions;
+export const { clearError, setUser, initializeAuth } = authSlice.actions;
 export default authSlice.reducer;

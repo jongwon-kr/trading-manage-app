@@ -123,6 +123,17 @@ const tradingSlice = createSlice({
         stock.change = action.payload.change;
         stock.changePercent = action.payload.changePercent;
       }
+      
+      // 관심종목 및 저널의 'open' 상태인 종목 가격도 업데이트
+      const openTrade = state.trades.find(
+        (t) => t.symbol === action.payload.symbol && t.status === 'open'
+      );
+      if (openTrade) {
+        openTrade.currentPrice = action.payload.price;
+        openTrade.unrealizedPnL = (action.payload.price - openTrade.entryPrice) * openTrade.quantity * (openTrade.type === 'long' ? 1 : -1);
+        openTrade.returnPercentage = ((action.payload.price - openTrade.entryPrice) / openTrade.entryPrice) * 100 * (openTrade.type === 'long' ? 1 : -1);
+      }
+
       state.lastUpdate = new Date().toISOString();
     },
 
@@ -131,7 +142,7 @@ const tradingSlice = createSlice({
       state.trades = action.payload;
     },
     addTrade: (state, action: PayloadAction<Trade>) => {
-      state.trades.push(action.payload);
+      state.trades.unshift(action.payload); // 새 항목을 맨 앞에 추가
     },
     updateTrade: (state, action: PayloadAction<Trade>) => {
       const index = state.trades.findIndex((t) => t.id === action.payload.id);

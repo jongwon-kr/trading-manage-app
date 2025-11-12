@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAppDispatch } from '../../hooks/reduxHooks';
-import { loginUser } from '../../store/slices/authSlice';
+// --- 경로 수정 ---
+import { useAppDispatch } from '@/hooks/reduxHooks';
+import { loginUser } from '@/store/slices/authSlice';
+// --- 경로 수정 ---
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 

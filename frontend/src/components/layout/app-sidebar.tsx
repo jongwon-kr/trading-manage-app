@@ -21,8 +21,11 @@ import {
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+// --- 경로 수정 ---
 import { useAppDispatch, useAppSelector } from "@/store/hooks" // ✅ Redux hooks
 import { setActivePage, ActivePage } from "@/store/slices/pageSlice" // ✅ Redux action
+import { logoutUser } from "@/store/slices/authSlice" // ✅ logoutUser 액션 추가
+// --- 경로 수정 ---
 import { cn } from "@/utils/shadcn-util"
 
 const menuItems = [
@@ -51,9 +54,14 @@ const menuItems = [
 export function AppSidebar() {
   const dispatch = useAppDispatch() // ✅ Redux dispatch
   const activePage = useAppSelector((state) => state.page.activePage) // ✅ Redux selector
+  const user = useAppSelector((state) => state.auth.user); // ✅ Redux user selector
 
   const handlePageChange = (page: ActivePage) => {
     dispatch(setActivePage(page)) // ✅ Redux action 디스패치
+  }
+
+  const handleLogout = () => {
+    dispatch(logoutUser()); // ✅ 로그아웃 액션 디스패치
   }
 
   return (
@@ -99,11 +107,11 @@ export function AppSidebar() {
         <div className="flex items-center gap-3 mb-3">
           <Avatar className="h-8 w-8">
             <AvatarImage src="/placeholder-avatar.jpg" />
-            <AvatarFallback>TM</AvatarFallback>
+            <AvatarFallback>{user?.username.substring(0, 2).toUpperCase() || 'TM'}</AvatarFallback>
           </Avatar>
           <div className="flex-1">
-            <p className="text-sm font-medium">Trader</p>
-            <p className="text-xs text-muted-foreground">trader@example.com</p>
+            <p className="text-sm font-medium">{user?.username || 'Trader'}</p>
+            <p className="text-xs text-muted-foreground">{user?.email || 'trader@example.com'}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -111,7 +119,7 @@ export function AppSidebar() {
             <Settings className="h-4 w-4 mr-2" />
             설정
           </Button>
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" onClick={handleLogout}> {/* ✅ 로그아웃 핸들러 연결 */}
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
