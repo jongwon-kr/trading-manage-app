@@ -2,11 +2,16 @@ package io.tbill.backendapi.presentation.user.controller;
 
 import io.tbill.backendapi.domain.user.dto.UserDto;
 import io.tbill.backendapi.domain.user.service.UserService;
+import io.tbill.backendapi.infrastructure.security.service.CustomUserDetails;
 import io.tbill.backendapi.presentation.user.dto.UserApiDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map; // [추가]
 
 @RestController
 @RequiredArgsConstructor
@@ -36,16 +41,29 @@ public class UserController {
     }
 
     /**
+     * 닉네임(username) 중복 확인 API
+     * [GET] /api/users/check-username?username={username}
+     */
+    @GetMapping("/check-username")
+    public ResponseEntity<Map<String, Boolean>> checkUsernameAvailability(
+            @RequestParam("username") String username
+    ) {
+        boolean isAvailable = userService.isUsernameAvailable(username);
+        return ResponseEntity.ok(Map.of("isAvailable", isAvailable));
+    }
+
+
+    /**
      * 사용자 정보 조회 API (인증 필요)
      * [GET] /api/users/me
      * (예시: 인증된 사용자 본인 정보 조회)
      */
-    // @GetMapping("/me")
-    // @PreAuthorize("isAuthenticated()") // (예시) 인증된 사용자만
-    // public ResponseEntity<UserApiDto.UserResponse> getMyInfo(
-    //         @AuthenticationPrincipal CustomUserDetails userDetails
-    // ) {
-    //     UserDto.UserInfo userInfo = userService.getUserById(userDetails.getUser().getId());
-    //     return ResponseEntity.ok(new UserApiDto.UserResponse(userInfo));
-    // }
+     @GetMapping("/me")
+     @PreAuthorize("isAuthenticated()") // (예시) 인증된 사용자만
+     public ResponseEntity<UserApiDto.UserResponse> getMyInfo(
+             @AuthenticationPrincipal CustomUserDetails userDetails
+     ) {
+         UserDto.UserInfo userInfo = userService.getUserById(userDetails.getUser().getId());
+         return ResponseEntity.ok(new UserApiDto.UserResponse(userInfo));
+     }
 }

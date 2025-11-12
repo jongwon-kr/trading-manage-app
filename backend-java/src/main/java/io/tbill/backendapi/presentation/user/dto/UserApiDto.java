@@ -1,5 +1,6 @@
 package io.tbill.backendapi.presentation.user.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.tbill.backendapi.domain.user.dto.UserDto;
 import lombok.Getter;
 import lombok.Setter;
@@ -11,6 +12,7 @@ public class UserApiDto {
      */
     @Getter
     @Setter
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class SignUpRequest {
         // (Validation 추가 필요)
         private String username;

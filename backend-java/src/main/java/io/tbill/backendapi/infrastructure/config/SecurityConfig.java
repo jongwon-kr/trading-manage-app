@@ -36,6 +36,8 @@ public class SecurityConfig {
     private static final String[] PUBLIC_PATHS = {
             // 인증
             "/api/auth/**",
+            "/api/users/sign-up",
+            "/api/users/check-username", // 닉네임 중복 확인
 
             // Swagger UI
             "/swagger-ui/**",
@@ -96,7 +98,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true); // 쿠키 허용
-        config.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:8080")); // (운영) 프론트엔드 주소
+        config.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:8080", "http://localhost:5173"));
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(Arrays.asList("*")); // 모든 헤더 허용
         config.setExposedHeaders(Arrays.asList("Authorization")); // Access Token 헤더 노출

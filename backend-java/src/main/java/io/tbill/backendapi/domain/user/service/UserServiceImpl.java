@@ -21,19 +21,20 @@ public class UserServiceImpl implements UserService {
      */
     @Transactional
     public UserDto.UserInfo signUp(UserDto.SignUpCommand command) {
-        // 이메일 중복 검사
         if (userRepository.findByEmail(command.getEmail()).isPresent()) {
             throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
         }
 
-        // (수정) 비밀번호 암호화
+        if (userRepository.existsByUsername(command.getUsername())) {
+            throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
+        }
+
         String encodedPassword = passwordEncoder.encode(command.getPassword());
 
-        User user = command.toEntity(encodedPassword); // 암호화된 비밀번호로 Entity 생성
+        User user = command.toEntity(encodedPassword);
 
         User savedUser = userRepository.save(user);
 
-        // Entity -> DTO 변환 후 반환
         return UserDto.UserInfo.from(savedUser);
     }
 
@@ -45,5 +46,13 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
         return UserDto.UserInfo.from(user);
+    }
+
+    /**
+     * 닉네임 중복 확인
+     */
+    @Override
+    public boolean isUsernameAvailable(String username) {
+        return !userRepository.existsByUsername(username);
     }
 }
