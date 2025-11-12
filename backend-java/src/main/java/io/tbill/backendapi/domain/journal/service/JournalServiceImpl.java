@@ -58,7 +58,9 @@ public class JournalServiceImpl implements JournalService {
                 command.getEntryPrice(),
                 command.getStopLossPrice(),
                 command.getRealizedPnL(),
-                command.getReasoning()
+                command.getReasoning(),
+                command.getTradeType(),
+                command.getQuantity()
         );
 
         log.info("매매일지 수정 완료: id={}", journal.getId());

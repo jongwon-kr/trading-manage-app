@@ -33,6 +33,13 @@ public class Journal extends BaseTimeEntity {
     @Column(name = "symbol", nullable = false)
     private String symbol;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "trade_type", nullable = false)
+    private TradeType tradeType;
+
+    @Column(name = "quantity", nullable = false)
+    private BigDecimal quantity;
+
     @Column(name = "entry_price", nullable = false)
     private BigDecimal entryPrice;
 
@@ -47,11 +54,14 @@ public class Journal extends BaseTimeEntity {
 
     @Builder
     public Journal(String authorEmail, MarketType market, String symbol,
+                   TradeType tradeType, BigDecimal quantity,
                    BigDecimal entryPrice, BigDecimal stopLossPrice,
                    BigDecimal realizedPnL, String reasoning) {
         this.authorEmail = authorEmail;
         this.market = market;
         this.symbol = symbol;
+        this.tradeType = tradeType;
+        this.quantity = quantity;
         this.entryPrice = entryPrice;
         this.stopLossPrice = stopLossPrice;
         this.realizedPnL = realizedPnL;
@@ -62,7 +72,8 @@ public class Journal extends BaseTimeEntity {
      * 매매일지 수정 (변경 감지)
      */
     public void update(BigDecimal entryPrice, BigDecimal stopLossPrice,
-                       BigDecimal realizedPnL, String reasoning) {
+                       BigDecimal realizedPnL, String reasoning,
+                       TradeType tradeType, BigDecimal quantity) {
         if (entryPrice != null) {
             this.entryPrice = entryPrice;
         }
@@ -74,6 +85,12 @@ public class Journal extends BaseTimeEntity {
         }
         if (reasoning != null) {
             this.reasoning = reasoning;
+        }
+        if (tradeType != null) {
+            this.tradeType = tradeType;
+        }
+        if (quantity != null) {
+            this.quantity = quantity;
         }
     }
 }

@@ -3,6 +3,7 @@ package io.tbill.backendapi.presentation.journal.dto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.tbill.backendapi.domain.journal.dto.JournalDto;
 import io.tbill.backendapi.domain.journal.entity.MarketType;
+import io.tbill.backendapi.domain.journal.entity.TradeType;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -41,6 +42,13 @@ public class JournalApiDto {
         @Size(max = 20, message = "심볼은 20자 이하여야 합니다")
         private String symbol;
 
+        @NotNull(message = "거래 유형은 필수입니다")
+        private TradeType tradeType;
+
+        @NotNull(message = "수량은 필수입니다")
+        @DecimalMin(value = "0.0", inclusive = false, message = "수량은 0보다 커야 합니다")
+        private BigDecimal quantity;
+
         @NotNull(message = "진입가는 필수입니다")
         @DecimalMin(value = "0.0", inclusive = false, message = "진입가는 0보다 커야 합니다")
         private BigDecimal entryPrice;
@@ -64,6 +72,8 @@ public class JournalApiDto {
                     .authorEmail(authorEmail)
                     .market(this.market)
                     .symbol(this.symbol)
+                    .tradeType(this.tradeType)
+                    .quantity(this.quantity)
                     .entryPrice(this.entryPrice)
                     .stopLossPrice(this.stopLossPrice)
                     .reasoning(reasoningJson)
@@ -78,6 +88,12 @@ public class JournalApiDto {
     @Setter
     @NoArgsConstructor
     public static class UpdateRequest {
+
+        private TradeType tradeType;
+
+        @DecimalMin(value = "0.0", inclusive = false, message = "수량은 0보다 커야 합니다")
+        private BigDecimal quantity;
+
         @DecimalMin(value = "0.0", inclusive = false, message = "진입가는 0보다 커야 합니다")
         private BigDecimal entryPrice;
 
@@ -105,6 +121,8 @@ public class JournalApiDto {
                     .stopLossPrice(this.stopLossPrice)
                     .realizedPnL(this.realizedPnL)
                     .reasoning(reasoningJson)
+                    .tradeType(this.tradeType)
+                    .quantity(this.quantity)
                     .build();
         }
     }
@@ -143,6 +161,8 @@ public class JournalApiDto {
         private final String authorEmail;
         private final MarketType market;
         private final String symbol;
+        private final TradeType tradeType;
+        private final BigDecimal quantity;
         private final BigDecimal entryPrice;
         private final BigDecimal stopLossPrice;
         private final BigDecimal realizedPnL;
@@ -155,6 +175,8 @@ public class JournalApiDto {
             this.authorEmail = info.getAuthorEmail();
             this.market = info.getMarket();
             this.symbol = info.getSymbol();
+            this.tradeType = info.getTradeType();
+            this.quantity = info.getQuantity();
             this.entryPrice = info.getEntryPrice();
             this.stopLossPrice = info.getStopLossPrice();
             this.realizedPnL = info.getRealizedPnL();
@@ -181,6 +203,8 @@ public class JournalApiDto {
         private final Long id;
         private final MarketType market;
         private final String symbol;
+        private final TradeType tradeType;
+        private final BigDecimal quantity;
         private final BigDecimal entryPrice;
         private final BigDecimal realizedPnL;
         private final LocalDateTime createdAt;
@@ -190,6 +214,8 @@ public class JournalApiDto {
             this.id = summary.getId();
             this.market = summary.getMarket();
             this.symbol = summary.getSymbol();
+            this.tradeType = summary.getTradeType();
+            this.quantity = summary.getQuantity();
             this.entryPrice = summary.getEntryPrice();
             this.realizedPnL = summary.getRealizedPnL();
             this.createdAt = summary.getCreatedAt();

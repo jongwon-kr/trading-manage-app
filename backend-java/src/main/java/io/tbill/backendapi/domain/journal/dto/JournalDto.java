@@ -2,8 +2,10 @@ package io.tbill.backendapi.domain.journal.dto;
 
 import io.tbill.backendapi.domain.journal.entity.Journal;
 import io.tbill.backendapi.domain.journal.entity.MarketType;
+import io.tbill.backendapi.domain.journal.entity.TradeType;
 import lombok.Builder;
 import lombok.Getter;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -17,16 +19,21 @@ public class JournalDto {
         private final String authorEmail;
         private final MarketType market;
         private final String symbol;
+        private final TradeType tradeType;
+        private final BigDecimal quantity;
         private final BigDecimal entryPrice;
         private final BigDecimal stopLossPrice;
         private final String reasoning;
 
         @Builder
         public CreateCommand(String authorEmail, MarketType market, String symbol,
+                             TradeType tradeType, BigDecimal quantity,
                              BigDecimal entryPrice, BigDecimal stopLossPrice, String reasoning) {
             this.authorEmail = authorEmail;
             this.market = market;
             this.symbol = symbol;
+            this.tradeType = tradeType;
+            this.quantity = quantity;
             this.entryPrice = entryPrice;
             this.stopLossPrice = stopLossPrice;
             this.reasoning = reasoning;
@@ -37,6 +44,8 @@ public class JournalDto {
                     .authorEmail(this.authorEmail)
                     .market(this.market)
                     .symbol(this.symbol)
+                    .tradeType(this.tradeType)
+                    .quantity(this.quantity)
                     .entryPrice(this.entryPrice)
                     .stopLossPrice(this.stopLossPrice)
                     .reasoning(this.reasoning)
@@ -51,6 +60,8 @@ public class JournalDto {
     public static class UpdateCommand {
         private final Long id;
         private final String authorEmail; // 권한 검증용
+        private final TradeType tradeType;
+        private final BigDecimal quantity;
         private final BigDecimal entryPrice;
         private final BigDecimal stopLossPrice;
         private final BigDecimal realizedPnL; // 손익 업데이트
@@ -58,13 +69,16 @@ public class JournalDto {
 
         @Builder
         public UpdateCommand(Long id, String authorEmail, BigDecimal entryPrice,
-                             BigDecimal stopLossPrice, BigDecimal realizedPnL, String reasoning) {
+                             BigDecimal stopLossPrice, BigDecimal realizedPnL, String reasoning,
+                             TradeType tradeType, BigDecimal quantity) {
             this.id = id;
             this.authorEmail = authorEmail;
             this.entryPrice = entryPrice;
             this.stopLossPrice = stopLossPrice;
             this.realizedPnL = realizedPnL;
             this.reasoning = reasoning;
+            this.tradeType = tradeType;
+            this.quantity = quantity;
         }
     }
 
@@ -101,6 +115,8 @@ public class JournalDto {
         private final String authorEmail;
         private final MarketType market;
         private final String symbol;
+        private final TradeType tradeType;
+        private final BigDecimal quantity;
         private final BigDecimal entryPrice;
         private final BigDecimal stopLossPrice;
         private final BigDecimal realizedPnL;
@@ -117,6 +133,8 @@ public class JournalDto {
             this.authorEmail = journal.getAuthorEmail();
             this.market = journal.getMarket();
             this.symbol = journal.getSymbol();
+            this.tradeType = journal.getTradeType();
+            this.quantity = journal.getQuantity();
             this.entryPrice = journal.getEntryPrice();
             this.stopLossPrice = journal.getStopLossPrice();
             this.realizedPnL = journal.getRealizedPnL();
@@ -134,6 +152,8 @@ public class JournalDto {
         private final Long id;
         private final MarketType market;
         private final String symbol;
+        private final TradeType tradeType;
+        private final BigDecimal quantity;
         private final BigDecimal entryPrice;
         private final BigDecimal realizedPnL;
         private final LocalDateTime createdAt;
@@ -147,6 +167,8 @@ public class JournalDto {
             this.id = journal.getId();
             this.market = journal.getMarket();
             this.symbol = journal.getSymbol();
+            this.tradeType = journal.getTradeType();
+            this.quantity = journal.getQuantity();
             this.entryPrice = journal.getEntryPrice();
             this.realizedPnL = journal.getRealizedPnL();
             this.createdAt = journal.getCreatedAt();
