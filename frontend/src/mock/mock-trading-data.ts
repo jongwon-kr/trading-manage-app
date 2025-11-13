@@ -97,11 +97,11 @@ export const mockJournalStats: TradingJournalStats = {
   totalTrades: 4,
   openTrades: 2,
   closedTrades: 2,
-  winRate: 100, // 2승 0패
-  avgWin: 497.5, // (675 + 320) / 2
+  winRate: 100,
+  avgWin: 497.5,
   avgLoss: 0,
-  profitFactor: Infinity, // 손실이 0이므로
-  totalReturn: 1516.25, // 995 (실현) + 521.25 (미실현)
+  profitFactor: Infinity,
+  totalReturn: 1516.25,
   bestTrade: 675,
   worstTrade: 320,
   currentStreak: 2,

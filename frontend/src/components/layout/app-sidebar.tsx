@@ -52,7 +52,7 @@ const menuItems = [
 ];
 
 /**
- * [신규] AccessToken 만료 타이머 및 갱신 버튼 컴포넌트
+ * AccessToken 만료 타이머 및 갱신 버튼 컴포넌트
  */
 const TokenExpiryTimer = () => {
   const dispatch = useAppDispatch();
@@ -72,9 +72,6 @@ const TokenExpiryTimer = () => {
 
       if (remaining <= 0) {
         setTimeLeft("만료됨");
-        // [수정] 만료 시 자동 갱신 대신, 사용자에게 알림
-        // (요청사항: "갱신버튼을 누르지 않으면 refresh가 되도록 하면 안됨")
-        // toast.warning("세션이 만료되었습니다. 갱신이 필요합니다.");
         return;
       }
 
@@ -83,8 +80,8 @@ const TokenExpiryTimer = () => {
       setTimeLeft(`${minutes}:${seconds < 10 ? '0' : ''}${seconds}`);
     };
 
-    calculateTimeLeft(); // 즉시 1회 실행
-    const interval = setInterval(calculateTimeLeft, 1000); // 1초마다 갱신
+    calculateTimeLeft();
+    const interval = setInterval(calculateTimeLeft, 1000);
 
     return () => clearInterval(interval);
   }, [accessTokenExpiresAt, isAuthenticated]);
@@ -177,7 +174,6 @@ export function AppSidebar() {
       </SidebarContent>
       
       <SidebarFooter className="border-t p-4 space-y-3">
-        {/* [추가] 토큰 만료 타이머 */}
         <TokenExpiryTimer />
       
         <div className="flex items-center gap-3">

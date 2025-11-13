@@ -55,8 +55,8 @@ export interface StrategyPerformance {
 }
 
 export interface RiskMetrics {
-  var95: number  // Value at Risk 95%
-  var99: number  // Value at Risk 99%
+  var95: number
+  var99: number
   expectedShortfall: number
   maxConsecutiveLosses: number
   largestLoss: number

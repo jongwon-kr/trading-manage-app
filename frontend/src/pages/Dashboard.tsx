@@ -1,4 +1,3 @@
-// src/pages/Dashboard.tsx
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -22,7 +21,6 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* 상단 헤더 */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">트레이딩 대시보드</h2>
@@ -40,7 +38,6 @@ export function Dashboard() {
         </div>
       </div>
       
-      {/* 주요 지표 카드들 */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -99,7 +96,6 @@ export function Dashboard() {
         </Card>
       </div>
 
-      {/* 상세 섹션 */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card className="col-span-2">
           <CardHeader>

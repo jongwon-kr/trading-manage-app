@@ -1,91 +1,93 @@
 // src/pages/Performance.tsx
-import { useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { 
-  BarChart3, 
-  TrendingUp, 
+import { useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  BarChart3,
+  TrendingUp,
   TrendingDown,
   Target,
   Activity,
   AlertTriangle,
   Award,
   PieChart,
-  LineChart
-} from "lucide-react"
-import { useAppDispatch, useAppSelector } from '@/store/hooks'
-import { 
+  LineChart,
+} from "lucide-react";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
   setPerformanceMetrics,
   setMonthlyReturns,
   setSectorAnalysis,
   setStrategyPerformance,
   setRiskMetrics,
-  setPerformancePeriod
-} from '@/store/slices/tradingSlice'
-import { 
+  setPerformancePeriod,
+} from "@/store/slices/tradingSlice";
+import {
   mockPerformanceMetrics,
   mockMonthlyReturns,
   mockSectorAnalysis,
   mockStrategyPerformance,
-  mockRiskMetrics
-} from '@/mock/mock-performance-data'
+  mockRiskMetrics,
+} from "@/mock/mock-performance-data";
 
 export function Performance() {
-  const dispatch = useAppDispatch()
+  const dispatch = useAppDispatch();
 
-  // Redux state
-  const { 
+  const {
     performanceMetrics,
     monthlyReturns,
     sectorAnalysis,
     strategyPerformance,
     riskMetrics,
     performancePeriod,
-    benchmarkSymbol
-  } = useAppSelector((state) => state.trading)
+    benchmarkSymbol,
+  } = useAppSelector((state) => state.trading);
 
-  // 컴포넌트 마운트 시 초기 데이터 로드
   useEffect(() => {
-    dispatch(setPerformanceMetrics(mockPerformanceMetrics))
-    dispatch(setMonthlyReturns(mockMonthlyReturns))
-    dispatch(setSectorAnalysis(mockSectorAnalysis))
-    dispatch(setStrategyPerformance(mockStrategyPerformance))
-    dispatch(setRiskMetrics(mockRiskMetrics))
-  }, [dispatch])
+    dispatch(setPerformanceMetrics(mockPerformanceMetrics));
+    dispatch(setMonthlyReturns(mockMonthlyReturns));
+    dispatch(setSectorAnalysis(mockSectorAnalysis));
+    dispatch(setStrategyPerformance(mockStrategyPerformance));
+    dispatch(setRiskMetrics(mockRiskMetrics));
+  }, [dispatch]);
 
   const formatPercent = (value: number) => {
-    return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`
-  }
+    return `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
+  };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('ko-KR', {
-      style: 'currency',
-      currency: 'KRW',
-      minimumFractionDigits: 0
-    }).format(amount * 1300)
-  }
+    return new Intl.NumberFormat("ko-KR", {
+      style: "currency",
+      currency: "KRW",
+      minimumFractionDigits: 0,
+    }).format(amount * 1300);
+  };
 
   const getPerformanceColor = (value: number) => {
-    return value > 0 ? 'text-green-600' : value < 0 ? 'text-red-600' : 'text-muted-foreground'
-  }
+    return value > 0
+      ? "text-green-600"
+      : value < 0
+      ? "text-red-600"
+      : "text-muted-foreground";
+  };
 
-  const MetricCard = ({ 
-    title, 
-    value, 
-    subtitle, 
-    icon: Icon, 
-    isPercentage = false, 
-    isCurrency = false 
+  const MetricCard = ({
+    title,
+    value,
+    subtitle,
+    icon: Icon,
+    isPercentage = false,
+    isCurrency = false,
   }: {
-    title: string
-    value: number
-    subtitle?: string
-    icon: any
-    isPercentage?: boolean
-    isCurrency?: boolean
+    title: string;
+    value: number;
+    subtitle?: string;
+    icon: any;
+    isPercentage?: boolean;
+    isCurrency?: boolean;
   }) => (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -94,34 +96,37 @@ export function Performance() {
       </CardHeader>
       <CardContent>
         <div className={`text-2xl font-bold ${getPerformanceColor(value)}`}>
-          {isCurrency ? formatCurrency(value) : 
-           isPercentage ? formatPercent(value) : 
-           value.toFixed(2)}
+          {isCurrency
+            ? formatCurrency(value)
+            : isPercentage
+            ? formatPercent(value)
+            : value.toFixed(2)}
         </div>
         {subtitle && (
           <p className="text-xs text-muted-foreground">{subtitle}</p>
         )}
       </CardContent>
     </Card>
-  )
+  );
 
   return (
     <div className="space-y-6">
-      {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <BarChart3 className="h-6 w-6" />
           <div>
             <h2 className="text-3xl font-bold tracking-tight">성과 분석</h2>
-            <p className="text-muted-foreground">포트폴리오 성과 및 위험 분석</p>
+            <p className="text-muted-foreground">
+              포트폴리오 성과 및 위험 분석
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex gap-1">
-            {(['1M', '3M', '6M', '1Y', 'ALL'] as const).map((period) => (
+            {(["1M", "3M", "6M", "1Y", "ALL"] as const).map((period) => (
               <Button
                 key={period}
-                variant={performancePeriod === period ? 'default' : 'outline'}
+                variant={performancePeriod === period ? "default" : "outline"}
                 size="sm"
                 onClick={() => dispatch(setPerformancePeriod(period))}
               >
@@ -132,13 +137,14 @@ export function Performance() {
         </div>
       </div>
 
-      {/* 주요 성과 지표 */}
       {performanceMetrics && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             title="총 수익률"
             value={performanceMetrics.totalReturn}
-            subtitle={`연환산 ${performanceMetrics.annualizedReturn.toFixed(2)}%`}
+            subtitle={`연환산 ${performanceMetrics.annualizedReturn.toFixed(
+              2
+            )}%`}
             icon={TrendingUp}
             isPercentage
           />
@@ -165,7 +171,6 @@ export function Performance() {
         </div>
       )}
 
-      {/* 세부 분석 탭 */}
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">개요</TabsTrigger>
@@ -178,7 +183,6 @@ export function Performance() {
         <TabsContent value="overview" className="space-y-6">
           {performanceMetrics && (
             <div className="grid gap-6 lg:grid-cols-2">
-              {/* 거래 통계 */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -189,8 +193,12 @@ export function Performance() {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">총 거래 수</p>
-                      <p className="text-2xl font-bold">{performanceMetrics.totalTrades}</p>
+                      <p className="text-sm text-muted-foreground">
+                        총 거래 수
+                      </p>
+                      <p className="text-2xl font-bold">
+                        {performanceMetrics.totalTrades}
+                      </p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">승률</p>
@@ -199,7 +207,7 @@ export function Performance() {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>승리 거래</span>
@@ -213,9 +221,9 @@ export function Performance() {
                         {performanceMetrics.losingTrades}회
                       </span>
                     </div>
-                    <Progress 
-                      value={performanceMetrics.winRate} 
-                      className="h-2 mt-2" 
+                    <Progress
+                      value={performanceMetrics.winRate}
+                      className="h-2 mt-2"
                     />
                   </div>
 
@@ -236,7 +244,6 @@ export function Performance() {
                 </CardContent>
               </Card>
 
-              {/* 수익 팩터 및 연속 기록 */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -252,12 +259,17 @@ export function Performance() {
                         {performanceMetrics.profitFactor.toFixed(2)}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {performanceMetrics.profitFactor > 1.5 ? '우수' : 
-                         performanceMetrics.profitFactor > 1.0 ? '보통' : '개선 필요'}
+                        {performanceMetrics.profitFactor > 1.5
+                          ? "우수"
+                          : performanceMetrics.profitFactor > 1.0
+                          ? "보통"
+                          : "개선 필요"}
                       </p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">평균 보유기간</p>
+                      <p className="text-sm text-muted-foreground">
+                        평균 보유기간
+                      </p>
                       <p className="text-2xl font-bold">
                         {performanceMetrics.avgHoldingPeriod.toFixed(1)}일
                       </p>
@@ -266,21 +278,33 @@ export function Performance() {
 
                   <div className="space-y-3 pt-4 border-t">
                     <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">현재 연속</span>
-                      <Badge variant={performanceMetrics.currentStreak > 0 ? 'default' : 'destructive'}>
-                        {performanceMetrics.currentStreak > 0 ? 
-                          `${performanceMetrics.currentStreak}승` : 
-                          `${Math.abs(performanceMetrics.currentStreak)}패`}
+                      <span className="text-sm text-muted-foreground">
+                        현재 연속
+                      </span>
+                      <Badge
+                        variant={
+                          performanceMetrics.currentStreak > 0
+                            ? "default"
+                            : "destructive"
+                        }
+                      >
+                        {performanceMetrics.currentStreak > 0
+                          ? `${performanceMetrics.currentStreak}승`
+                          : `${Math.abs(performanceMetrics.currentStreak)}패`}
                       </Badge>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">최장 연승</span>
+                      <span className="text-sm text-muted-foreground">
+                        최장 연승
+                      </span>
                       <span className="font-medium text-green-600">
                         {performanceMetrics.longestWinStreak}회
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">최장 연패</span>
+                      <span className="text-sm text-muted-foreground">
+                        최장 연패
+                      </span>
                       <span className="font-medium text-red-600">
                         {performanceMetrics.longestLossStreak}회
                       </span>
@@ -306,7 +330,6 @@ export function Performance() {
             </div>
           )}
 
-          {/* 벤치마크 비교 */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -336,7 +359,9 @@ export function Performance() {
                 </div>
               )}
               <div className="mt-4 h-64 bg-muted rounded flex items-center justify-center">
-                <p className="text-muted-foreground">성과 차트 (차트 라이브러리 통합 예정)</p>
+                <p className="text-muted-foreground">
+                  성과 차트 (차트 라이브러리 통합 예정)
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -350,22 +375,30 @@ export function Performance() {
             <CardContent>
               <div className="grid grid-cols-6 gap-2">
                 {monthlyReturns.map((month, index) => (
-                  <div 
+                  <div
                     key={index}
                     className={`p-3 rounded text-center border ${
-                      month.returns > 0 ? 'bg-green-50 border-green-200' :
-                      month.returns < 0 ? 'bg-red-50 border-red-200' :
-                      'bg-muted'
+                      month.returns > 0
+                        ? "bg-green-50 border-green-200"
+                        : month.returns < 0
+                        ? "bg-red-50 border-red-200"
+                        : "bg-muted"
                     }`}
                   >
                     <p className="text-xs text-muted-foreground">
-                      {new Date(month.month).toLocaleDateString('ko-KR', { month: 'short' })}
+                      {new Date(month.month).toLocaleDateString("ko-KR", {
+                        month: "short",
+                      })}
                     </p>
-                    <p className={`font-bold ${
-                      month.returns > 0 ? 'text-green-600' :
-                      month.returns < 0 ? 'text-red-600' :
-                      'text-muted-foreground'
-                    }`}>
+                    <p
+                      className={`font-bold ${
+                        month.returns > 0
+                          ? "text-green-600"
+                          : month.returns < 0
+                          ? "text-red-600"
+                          : "text-muted-foreground"
+                      }`}
+                    >
                       {formatPercent(month.returns)}
                     </p>
                     <p className="text-xs text-muted-foreground">
@@ -405,19 +438,25 @@ export function Performance() {
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">기대 손실</span>
+                      <span className="text-sm text-muted-foreground">
+                        기대 손실
+                      </span>
                       <span className="font-medium text-red-600">
                         {riskMetrics.expectedShortfall.toFixed(2)}%
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">최대 손실</span>
+                      <span className="text-sm text-muted-foreground">
+                        최대 손실
+                      </span>
                       <span className="font-medium text-red-600">
                         {riskMetrics.largestLoss.toFixed(2)}%
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">연속 손실</span>
+                      <span className="text-sm text-muted-foreground">
+                        연속 손실
+                      </span>
                       <span className="font-medium">
                         {riskMetrics.maxConsecutiveLosses}회
                       </span>
@@ -436,11 +475,15 @@ export function Performance() {
                   </div>
                   <div className="mt-4 space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">현재 드로우다운</span>
+                      <span className="text-sm text-muted-foreground">
+                        현재 드로우다운
+                      </span>
                       <span className="font-medium text-red-600">-2.1%</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">평균 회복 기간</span>
+                      <span className="text-sm text-muted-foreground">
+                        평균 회복 기간
+                      </span>
                       <span className="font-medium">12일</span>
                     </div>
                   </div>
@@ -468,7 +511,11 @@ export function Performance() {
                         <Badge variant="outline">{sector.trades}거래</Badge>
                       </div>
                       <div className="text-right">
-                        <span className={`font-bold ${getPerformanceColor(sector.returns)}`}>
+                        <span
+                          className={`font-bold ${getPerformanceColor(
+                            sector.returns
+                          )}`}
+                        >
                           {formatPercent(sector.returns)}
                         </span>
                       </div>
@@ -483,7 +530,9 @@ export function Performance() {
                       </div>
                       <div className="w-20 text-right">
                         <p className="text-sm text-muted-foreground">승률</p>
-                        <p className="font-medium">{sector.winRate.toFixed(1)}%</p>
+                        <p className="font-medium">
+                          {sector.winRate.toFixed(1)}%
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -506,24 +555,34 @@ export function Performance() {
                       <h4 className="font-semibold">{strategy.strategy}</h4>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline">{strategy.trades}거래</Badge>
-                        <Badge 
-                          variant={strategy.winRate >= 70 ? 'default' : 'secondary'}
+                        <Badge
+                          variant={
+                            strategy.winRate >= 70 ? "default" : "secondary"
+                          }
                         >
                           승률 {strategy.winRate.toFixed(1)}%
                         </Badge>
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-3 gap-4 text-sm">
                       <div>
                         <p className="text-muted-foreground">총 수익률</p>
-                        <p className={`font-bold ${getPerformanceColor(strategy.totalReturn)}`}>
+                        <p
+                          className={`font-bold ${getPerformanceColor(
+                            strategy.totalReturn
+                          )}`}
+                        >
                           {formatPercent(strategy.totalReturn)}
                         </p>
                       </div>
                       <div>
                         <p className="text-muted-foreground">평균 수익률</p>
-                        <p className={`font-bold ${getPerformanceColor(strategy.avgReturn)}`}>
+                        <p
+                          className={`font-bold ${getPerformanceColor(
+                            strategy.avgReturn
+                          )}`}
+                        >
                           {formatPercent(strategy.avgReturn)}
                         </p>
                       </div>
@@ -542,5 +601,5 @@ export function Performance() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

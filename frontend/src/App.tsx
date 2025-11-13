@@ -36,10 +36,13 @@ const AppContent = () => {
   const dispatch = useAppDispatch();
   const activePage = useAppSelector((state) => state.page.activePage);
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+  const isLoading = useAppSelector((state) => state.auth.isLoading);
 
   useEffect(() => {
-    dispatch(refreshSession());
-  }, [dispatch]);
+    if (isLoading) {
+      dispatch(refreshSession());
+    }
+  }, [dispatch, isLoading]);
 
   const pageTitles: { [key in string]: { title: string; subtitle?: string } } =
     {

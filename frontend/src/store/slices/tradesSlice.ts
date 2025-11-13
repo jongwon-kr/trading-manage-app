@@ -1,6 +1,5 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-// --- 경로 수정 ---
-import { tradesAPI } from '@/api/trades.api';
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { tradesAPI } from "@/api/trades.api";
 import {
   TradeState,
   TradeFilters,
@@ -10,44 +9,39 @@ import {
   TradeStatus,
   TradesResponse,
   TradingStats,
-} from '@/types/trade.types';
-import { DEFAULT_PAGE_SIZE } from '@/utils/constants';
-import { RootState } from '@/store';
-// --- 경로 수정 ---
+} from "@/types/trade.types";
+import { DEFAULT_PAGE_SIZE } from "@/utils/constants";
+import { RootState } from "@/store";
 
+const MOCK_TRADES_KEY = "mock_trades";
 
-const MOCK_TRADES_KEY = 'mock_trades';
-
-// 로컬 스토리지에서 거래 내역 불러오기
 const getMockTradesFromStorage = (): Trade[] => {
   try {
     const data = localStorage.getItem(MOCK_TRADES_KEY);
     return data ? JSON.parse(data) : [];
   } catch (error) {
-    console.error('Error reading mock trades from localStorage', error);
+    console.error("Error reading mock trades from localStorage", error);
     return [];
   }
 };
 
-// 로컬 스토리지에 거래 내역 저장하기
 const saveMockTradesToStorage = (trades: Trade[]) => {
   try {
     localStorage.setItem(MOCK_TRADES_KEY, JSON.stringify(trades));
   } catch (error) {
-    console.error('Error saving mock trades to localStorage', error);
+    console.error("Error saving mock trades to localStorage", error);
   }
 };
 
-// 목업 통계 생성 함수
 const generateMockStats = (trades: Trade[]): TradingStats => {
   const closedTrades = trades.filter(
     (t) =>
       t.status === TradeStatus.COMPLETED &&
       t.profitLoss !== undefined &&
-      t.profitLoss !== null,
+      t.profitLoss !== null
   );
   const winningTrades = closedTrades.filter((t) => t.profitLoss! > 0);
-  const losingTrades = closedTrades.filter((t) => t.profitLoss! <= 0); // 0도 손실로 간주
+  const losingTrades = closedTrades.filter((t) => t.profitLoss! <= 0);
 
   const totalProfit = winningTrades.reduce((sum, t) => sum + t.profitLoss!, 0);
   const totalLoss = losingTrades.reduce((sum, t) => sum + t.profitLoss!, 0);
@@ -61,7 +55,11 @@ const generateMockStats = (trades: Trade[]): TradingStats => {
   const averageLoss =
     losingTrades.length > 0 ? totalLoss / losingTrades.length : 0;
   const profitFactor =
-    totalLoss !== 0 ? Math.abs(totalProfit / totalLoss) : totalProfit > 0 ? 999 : 0; // 0으로 나누기 방지
+    totalLoss !== 0
+      ? Math.abs(totalProfit / totalLoss)
+      : totalProfit > 0
+      ? 999
+      : 0;
 
   return {
     totalTrades: trades.length,
@@ -78,7 +76,6 @@ const generateMockStats = (trades: Trade[]): TradingStats => {
   };
 };
 
-// Initial state
 const initialState: TradeState = {
   trades: [],
   currentTrade: null,
@@ -92,18 +89,17 @@ const initialState: TradeState = {
   totalPages: 0,
 };
 
-// Async thunks
 export const fetchTrades = createAsyncThunk(
-  'trades/fetchTrades',
+  "trades/fetchTrades",
   async (filters: TradeFilters | undefined, { rejectWithValue, getState }) => {
     const state = getState() as RootState;
     const username = state.auth.user?.username;
 
-    if (username === 'test') {
+    if (username === "test") {
       try {
-        await new Promise(res => setTimeout(res, 200));
+        await new Promise((res) => setTimeout(res, 200));
         const trades = getMockTradesFromStorage();
-        
+
         const filteredTrades = trades
           .filter((trade) => {
             if (
@@ -112,12 +108,13 @@ export const fetchTrades = createAsyncThunk(
             )
               return false;
             if (filters?.type && trade.type !== filters.type) return false;
-            if (filters?.status && trade.status !== filters.status) return false;
+            if (filters?.status && trade.status !== filters.status)
+              return false;
             return true;
           })
           .sort(
             (a, b) =>
-              new Date(b.entryDate).getTime() - new Date(a.entryDate).getTime(),
+              new Date(b.entryDate).getTime() - new Date(a.entryDate).getTime()
           );
 
         const response: TradesResponse = {
@@ -139,23 +136,22 @@ export const fetchTrades = createAsyncThunk(
     } catch (error) {
       return rejectWithValue((error as Error).message);
     }
-  },
+  }
 );
 
 export const fetchTradeById = createAsyncThunk(
-  'trades/fetchTradeById',
+  "trades/fetchTradeById",
   async (id: number, { rejectWithValue, getState }) => {
     const state = getState() as RootState;
     const username = state.auth.user?.username;
 
-    // --- 목업 로직 ---
-    if (username === 'test') {
+    if (username === "test") {
       try {
-        await new Promise(res => setTimeout(res, 200));
+        await new Promise((res) => setTimeout(res, 200));
         const trades = getMockTradesFromStorage();
         const trade = trades.find((t) => t.id === id);
         if (!trade) {
-          throw new Error('거래 내역을 찾을 수 없습니다.');
+          throw new Error("거래 내역을 찾을 수 없습니다.");
         }
         return trade;
       } catch (error) {
@@ -169,18 +165,18 @@ export const fetchTradeById = createAsyncThunk(
     } catch (error) {
       return rejectWithValue((error as Error).message);
     }
-  },
+  }
 );
 
 export const createTrade = createAsyncThunk(
-  'trades/createTrade',
+  "trades/createTrade",
   async (data: CreateTradeRequest, { rejectWithValue, getState }) => {
     const state = getState() as RootState;
     const username = state.auth.user?.username;
 
-    if (username === 'test') {
+    if (username === "test") {
       try {
-        await new Promise(res => setTimeout(res, 200));
+        await new Promise((res) => setTimeout(res, 200));
         const trades = getMockTradesFromStorage();
         const newId =
           trades.length > 0 ? Math.max(...trades.map((t) => t.id)) + 1 : 1;
@@ -197,9 +193,7 @@ export const createTrade = createAsyncThunk(
           notes: data.notes,
           entryDate: data.entryDate || new Date().toISOString(),
           exitDate: data.exitDate,
-          status: data.exitDate
-            ? TradeStatus.COMPLETED
-            : TradeStatus.PENDING,
+          status: data.exitDate ? TradeStatus.COMPLETED : TradeStatus.PENDING,
           profitLoss:
             data.exitDate && data.exitPrice
               ? (data.exitPrice - data.entryPrice) * data.quantity
@@ -225,33 +219,47 @@ export const createTrade = createAsyncThunk(
     } catch (error) {
       return rejectWithValue((error as Error).message);
     }
-  },
+  }
 );
 
 export const updateTrade = createAsyncThunk(
-  'trades/updateTrade',
+  "trades/updateTrade",
   async (
     { id, data }: { id: number; data: UpdateTradeRequest },
-    { rejectWithValue, getState },
+    { rejectWithValue, getState }
   ) => {
     const state = getState() as RootState;
     const username = state.auth.user?.username;
 
-    if (username === 'test') {
+    if (username === "test") {
       try {
-        await new Promise(res => setTimeout(res, 200));
+        await new Promise((res) => setTimeout(res, 200));
         const trades = getMockTradesFromStorage();
         const index = trades.findIndex((t) => t.id === id);
         if (index === -1) {
-          throw new Error('수정할 거래 내역을 찾을 수 없습니다.');
+          throw new Error("수정할 거래 내역을 찾을 수 없습니다.");
         }
-        
-        const updatedTrade: Trade = { ...trades[index], ...data, updatedAt: new Date().toISOString() };
 
-        updatedTrade.status = data.exitDate ? TradeStatus.COMPLETED : data.status || trades[index].status;
-        if (updatedTrade.status === TradeStatus.COMPLETED && updatedTrade.exitPrice) {
-           updatedTrade.profitLoss = (updatedTrade.exitPrice - updatedTrade.entryPrice) * updatedTrade.quantity;
-           updatedTrade.profitLossPercentage = ((updatedTrade.exitPrice - updatedTrade.entryPrice) / updatedTrade.entryPrice) * 100;
+        const updatedTrade: Trade = {
+          ...trades[index],
+          ...data,
+          updatedAt: new Date().toISOString(),
+        };
+
+        updatedTrade.status = data.exitDate
+          ? TradeStatus.COMPLETED
+          : data.status || trades[index].status;
+        if (
+          updatedTrade.status === TradeStatus.COMPLETED &&
+          updatedTrade.exitPrice
+        ) {
+          updatedTrade.profitLoss =
+            (updatedTrade.exitPrice - updatedTrade.entryPrice) *
+            updatedTrade.quantity;
+          updatedTrade.profitLossPercentage =
+            ((updatedTrade.exitPrice - updatedTrade.entryPrice) /
+              updatedTrade.entryPrice) *
+            100;
         }
 
         trades[index] = updatedTrade;
@@ -268,22 +276,22 @@ export const updateTrade = createAsyncThunk(
     } catch (error) {
       return rejectWithValue((error as Error).message);
     }
-  },
+  }
 );
 
 export const deleteTrade = createAsyncThunk(
-  'trades/deleteTrade',
+  "trades/deleteTrade",
   async (id: number, { rejectWithValue, getState }) => {
     const state = getState() as RootState;
     const username = state.auth.user?.username;
 
-    if (username === 'test') {
+    if (username === "test") {
       try {
-        await new Promise(res => setTimeout(res, 200));
+        await new Promise((res) => setTimeout(res, 200));
         const trades = getMockTradesFromStorage();
         const newTrades = trades.filter((t) => t.id !== id);
         if (trades.length === newTrades.length) {
-            throw new Error("삭제할 거래 내역을 찾을 수 없습니다.");
+          throw new Error("삭제할 거래 내역을 찾을 수 없습니다.");
         }
         saveMockTradesToStorage(newTrades);
         return id;
@@ -298,18 +306,18 @@ export const deleteTrade = createAsyncThunk(
     } catch (error) {
       return rejectWithValue((error as Error).message);
     }
-  },
+  }
 );
 
 export const fetchStats = createAsyncThunk(
-  'trades/fetchStats',
+  "trades/fetchStats",
   async (_, { rejectWithValue, getState }) => {
     const state = getState() as RootState;
     const username = state.auth.user?.username;
 
-    if (username === 'test') {
+    if (username === "test") {
       try {
-        await new Promise(res => setTimeout(res, 200));
+        await new Promise((res) => setTimeout(res, 200));
         const trades = getMockTradesFromStorage();
         const stats = generateMockStats(trades);
         return stats;
@@ -324,12 +332,11 @@ export const fetchStats = createAsyncThunk(
     } catch (error) {
       return rejectWithValue((error as Error).message);
     }
-  },
+  }
 );
 
-// Slice
 const tradesSlice = createSlice({
-  name: 'trades',
+  name: "trades",
   initialState,
   reducers: {
     setFilters: (state, action: PayloadAction<TradeFilters>) => {
@@ -343,7 +350,6 @@ const tradesSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    // Fetch trades
     builder
       .addCase(fetchTrades.pending, (state) => {
         state.isLoading = true;
@@ -360,7 +366,6 @@ const tradesSlice = createSlice({
         state.error = action.payload as string;
       });
 
-    // Fetch trade by ID
     builder
       .addCase(fetchTradeById.pending, (state) => {
         state.isLoading = true;
@@ -375,7 +380,6 @@ const tradesSlice = createSlice({
         state.error = action.payload as string;
       });
 
-    // Create trade
     builder
       .addCase(createTrade.pending, (state) => {
         state.isLoading = true;
@@ -383,14 +387,13 @@ const tradesSlice = createSlice({
       })
       .addCase(createTrade.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.trades.unshift(action.payload); // 새 항목을 맨 앞에 추가
+        state.trades.unshift(action.payload);
       })
       .addCase(createTrade.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       });
 
-    // Update trade
     builder
       .addCase(updateTrade.pending, (state) => {
         state.isLoading = true;
@@ -411,7 +414,6 @@ const tradesSlice = createSlice({
         state.error = action.payload as string;
       });
 
-    // Delete trade
     builder
       .addCase(deleteTrade.pending, (state) => {
         state.isLoading = true;
@@ -431,5 +433,6 @@ const tradesSlice = createSlice({
   },
 });
 
-export const { setFilters, clearCurrentTrade, clearError } = tradesSlice.actions;
+export const { setFilters, clearCurrentTrade, clearError } =
+  tradesSlice.actions;
 export default tradesSlice.reducer;

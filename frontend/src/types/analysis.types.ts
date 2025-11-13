@@ -40,7 +40,7 @@ export interface AnalysisResult {
   indicators?: TechnicalIndicators;
   summary: string;
   recommendation: "BUY" | "SELL" | "HOLD";
-  confidence: number; // 0.0 - 1.0
-  analyzedAt: string; // ISO datetime string
+  confidence: number;
+  analyzedAt: string;
   errorMessage?: string;
 }

@@ -1,5 +1,3 @@
-// Application constants
-
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
 
@@ -11,7 +9,7 @@ export const API_ENDPOINTS = {
   },
   USERS: {
     REGISTER: "/users/sign-up",
-    CHECK_USERNAME: '/users/check-username',
+    CHECK_USERNAME: "/users/check-username",
     ME: "/users/me",
   },
   JOURNALS: {

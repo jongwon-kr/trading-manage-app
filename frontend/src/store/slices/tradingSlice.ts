@@ -1,22 +1,22 @@
-import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit'
-import { MarketData, PreMarketAnalysis } from '@/types/analysis.types'
-import { 
+import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
+import { MarketData, PreMarketAnalysis } from "@/types/analysis.types";
+import {
   JournalPaging,
   JournalStatistics,
   JournalSummary,
   JournalApiDto,
-} from '@/types/journal.types'
-import { 
-  PerformanceMetrics, 
-  PerformanceChart, 
-  MonthlyReturns, 
-  SectorAnalysis, 
-  StrategyPerformance, 
-  RiskMetrics 
-} from '@/types/performance'
-import { journalAPI } from '@/api/journal.api'
-import { toast } from 'sonner'
-import { RootState } from '@/store'
+} from "@/types/journal.types";
+import {
+  PerformanceMetrics,
+  PerformanceChart,
+  MonthlyReturns,
+  SectorAnalysis,
+  StrategyPerformance,
+  RiskMetrics,
+} from "@/types/performance";
+import { journalAPI } from "@/api/journal.api";
+import { toast } from "sonner";
+import { RootState } from "@/store";
 
 interface TradingState {
   marketData: MarketData[];
@@ -24,14 +24,14 @@ interface TradingState {
   watchlist: string[];
   selectedStock: string | null;
   isLoading: boolean;
-  isJournalLoading: boolean; 
-  isStatsLoading: boolean; 
+  isJournalLoading: boolean;
+  isStatsLoading: boolean;
   lastUpdate: string | null;
 
-  journals: JournalPaging<JournalSummary>; // [수정]
+  journals: JournalPaging<JournalSummary>;
   journalStats: JournalStatistics | null;
   selectedJournal: string | null;
-  journalFilters: JournalApiDto.JournalFilters; // [수정]
+  journalFilters: JournalApiDto.JournalFilters;
 
   performanceMetrics: PerformanceMetrics | null;
   performanceChart: PerformanceChart[];
@@ -43,7 +43,6 @@ interface TradingState {
   performancePeriod: "1M" | "3M" | "6M" | "1Y" | "ALL";
 }
 
-// [수정] PagedResponse<T>에 맞춘 초기값
 const initialJournalPaging: JournalPaging<JournalSummary> = {
   content: [],
   pageNumber: 0,
@@ -53,21 +52,20 @@ const initialJournalPaging: JournalPaging<JournalSummary> = {
   isLast: true,
 };
 
-
 const initialState: TradingState = {
   marketData: [],
   preMarketAnalysis: null,
   watchlist: [],
   selectedStock: null,
   isLoading: false,
-  isJournalLoading: false, 
-  isStatsLoading: false, 
+  isJournalLoading: false,
+  isStatsLoading: false,
   lastUpdate: null,
 
-  journals: initialJournalPaging, // [수정]
+  journals: initialJournalPaging,
   journalStats: null,
   selectedJournal: null,
-  journalFilters: { // [수정]
+  journalFilters: {
     page: 0,
     size: 20,
     sortBy: "createdAt",
@@ -84,16 +82,11 @@ const initialState: TradingState = {
   performancePeriod: "1Y",
 };
 
-// --- 비동기 Thunks (Async Thunks) ---
-
-/**
- * [수정] 매매일지 목록 조회
- */
 export const fetchJournals = createAsyncThunk(
-  'trading/fetchJournals',
+  "trading/fetchJournals",
   async (filters: JournalApiDto.JournalFilters, { rejectWithValue }) => {
     try {
-      const response = await journalAPI.search(filters); // [수정]
+      const response = await journalAPI.search(filters);
       return response;
     } catch (error: any) {
       return rejectWithValue(error.message);
@@ -101,11 +94,8 @@ export const fetchJournals = createAsyncThunk(
   }
 );
 
-/**
- * 매매일지 통계 조회
- */
 export const fetchJournalStats = createAsyncThunk(
-  'trading/fetchJournalStats',
+  "trading/fetchJournalStats",
   async (_, { rejectWithValue }) => {
     try {
       const response = await journalAPI.getStatistics();
@@ -116,38 +106,32 @@ export const fetchJournalStats = createAsyncThunk(
   }
 );
 
-/**
- * 매매일지 생성
- */
 export const createJournal = createAsyncThunk(
-  'trading/createJournal',
-  async (data: JournalApiDto.CreateRequest, { dispatch, getState, rejectWithValue }) => {
+  "trading/createJournal",
+  async (
+    data: JournalApiDto.CreateRequest,
+    { dispatch, getState, rejectWithValue }
+  ) => {
     try {
-      const newJournal = await journalAPI.createJournal(data); 
-      
-      // [수정] 성공 시, 현재 필터로 1페이지 및 통계 새로고침
+      const newJournal = await journalAPI.createJournal(data);
       const state = getState() as RootState;
-      dispatch(fetchJournals(state.trading.journalFilters)); 
+      dispatch(fetchJournals(state.trading.journalFilters));
       dispatch(fetchJournalStats());
-      return newJournal; 
+      return newJournal;
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
   }
 );
 
-/**
- * 매매일지 삭제
- */
 export const deleteJournal = createAsyncThunk(
-  'trading/deleteJournal',
+  "trading/deleteJournal",
   async (journalId: number, { dispatch, getState, rejectWithValue }) => {
     try {
       await journalAPI.deleteJournal(journalId);
-      
-      // [수정] 성공 시, 현재 필터로 1페이지 및 통계 새로고침
+
       const state = getState() as RootState;
-      dispatch(fetchJournals(state.trading.journalFilters)); 
+      dispatch(fetchJournals(state.trading.journalFilters));
       dispatch(fetchJournalStats());
       return journalId;
     } catch (error: any) {
@@ -156,14 +140,10 @@ export const deleteJournal = createAsyncThunk(
   }
 );
 
-
-// --- tradingSlice ---
-
 const tradingSlice = createSlice({
   name: "trading",
   initialState,
   reducers: {
-    // ... (기존 리듀서들: setMarketData, ... , updateStockPrice) ...
     setMarketData: (state, action: PayloadAction<MarketData[]>) => {
       state.marketData = action.payload;
       state.lastUpdate = new Date().toISOString();
@@ -196,11 +176,8 @@ const tradingSlice = createSlice({
         change: number;
         changePercent: number;
       }>
-    ) => {
-      // (기존 로직 생략)
-    },
-    
-    // [수정] setJournalFilters 타입
+    ) => {},
+
     setJournalFilters: (
       state,
       action: PayloadAction<Partial<JournalApiDto.JournalFilters>>
@@ -208,7 +185,6 @@ const tradingSlice = createSlice({
       state.journalFilters = { ...state.journalFilters, ...action.payload };
     },
 
-    // ... (기존 리듀서들: setPerformanceMetrics, ... , setPerformancePeriod) ...
     setSelectedJournal: (state, action: PayloadAction<string | null>) => {
       state.selectedJournal = action.payload;
     },
@@ -247,35 +223,42 @@ const tradingSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    // --- 매매일지 목록 (fetchJournals) ---
     builder
       .addCase(fetchJournals.pending, (state) => {
         state.isJournalLoading = true;
       })
-      .addCase(fetchJournals.fulfilled, (state, action: PayloadAction<JournalPaging<JournalSummary>>) => {
-        state.isJournalLoading = false;
-        state.journals = action.payload; // [수정] PagedResponse DTO를 그대로 저장
-      })
+      .addCase(
+        fetchJournals.fulfilled,
+        (state, action: PayloadAction<JournalPaging<JournalSummary>>) => {
+          state.isJournalLoading = false;
+          state.journals = action.payload;
+        }
+      )
       .addCase(fetchJournals.rejected, (state, action) => {
         state.isJournalLoading = false;
-        toast.error("매매일지 조회 실패", { description: action.payload as string });
+        toast.error("매매일지 조회 실패", {
+          description: action.payload as string,
+        });
       });
 
-    // --- 매매일지 통계 (fetchJournalStats) ---
     builder
       .addCase(fetchJournalStats.pending, (state) => {
         state.isStatsLoading = true;
       })
-      .addCase(fetchJournalStats.fulfilled, (state, action: PayloadAction<JournalStatistics>) => {
-        state.isStatsLoading = false;
-        state.journalStats = action.payload;
-      })
+      .addCase(
+        fetchJournalStats.fulfilled,
+        (state, action: PayloadAction<JournalStatistics>) => {
+          state.isStatsLoading = false;
+          state.journalStats = action.payload;
+        }
+      )
       .addCase(fetchJournalStats.rejected, (state, action) => {
         state.isStatsLoading = false;
-        toast.error("통계 조회 실패", { description: action.payload as string });
+        toast.error("통계 조회 실패", {
+          description: action.payload as string,
+        });
       });
-      
-    // --- 매매일지 생성 (createJournal) ---
+
     builder
       .addCase(createJournal.pending, (state) => {
         state.isJournalLoading = true;
@@ -283,26 +266,27 @@ const tradingSlice = createSlice({
       .addCase(createJournal.fulfilled, (state) => {
         state.isJournalLoading = false;
         toast.success("매매일지 작성 성공!");
-        // [수정] 목록에 수동 추가 로직 제거 (Thunk가 fetchJournals를 다시 호출함)
       })
       .addCase(createJournal.rejected, (state, action) => {
         state.isJournalLoading = false;
-        toast.error("매매일지 작성 실패", { description: action.payload as string });
+        toast.error("매매일지 작성 실패", {
+          description: action.payload as string,
+        });
       });
 
-    // --- 매매일지 삭제 (deleteJournal) ---
     builder
       .addCase(deleteJournal.pending, (state) => {
-        state.isJournalLoading = true; 
+        state.isJournalLoading = true;
       })
       .addCase(deleteJournal.fulfilled, (state) => {
         state.isJournalLoading = false;
         toast.success("매매일지 삭제 성공!");
-        // [수정] 목록에서 수동 제거 로직 제거 (Thunk가 fetchJournals를 다시 호출함)
       })
       .addCase(deleteJournal.rejected, (state, action) => {
         state.isJournalLoading = false;
-        toast.error("매매일지 삭제 실패", { description: action.payload as string });
+        toast.error("매매일지 삭제 실패", {
+          description: action.payload as string,
+        });
       });
   },
 });
