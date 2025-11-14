@@ -1,12 +1,10 @@
 package io.tbill.backendapi.infrastructure.redis.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.util.Optional;
 
 @Slf4j
@@ -14,63 +12,27 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class AnalysisResultCacheService {
 
-    private final RedisTemplate<String, String> redisTemplate;
-    private final ObjectMapper objectMapper;
+    // RedisConfig에 의해 자동 구성됨
+    private final StringRedisTemplate stringRedisTemplate;
 
-    private static final String ANALYSIS_KEY_PREFIX = "analysis:";
-    private static final Duration DEFAULT_TTL = Duration.ofHours(1);
-
-    /**
-     * 분석 결과 저장
-     */
-    public void saveAnalysisResult(String requestId, Object result) {
-        try {
-            String key = ANALYSIS_KEY_PREFIX + requestId;
-            String jsonValue = objectMapper.writeValueAsString(result);
-            redisTemplate.opsForValue().set(key, jsonValue, DEFAULT_TTL);
-            log.info("분석 결과 캐싱 완료: requestId={}", requestId);
-        } catch (Exception e) {
-            log.error("분석 결과 캐싱 실패: requestId={}", requestId, e);
-        }
-    }
+    // Python의 redis_service.py와 키 형식을 일치시켜야 함
+    private static final String KEY_PREFIX = "analysis:";
 
     /**
-     * 분석 결과 조회
+     * Redis에서 분석 결과(JSON 문자열)를 조회
+     *
+     * @param requestId 조회할 요청 ID
+     * @return 결과가 있으면 JSON 문자열을, 없으면 Optional.empty() 반환
      */
-    public <T> Optional<T> getAnalysisResult(String requestId, Class<T> resultType) {
+    public Optional<String> getAnalysisResult(String requestId) {
+        String key = KEY_PREFIX + requestId;
         try {
-            String key = ANALYSIS_KEY_PREFIX + requestId;
-            String jsonValue = redisTemplate.opsForValue().get(key);
+            String resultJson = stringRedisTemplate.opsForValue().get(key);
+            return Optional.ofNullable(resultJson);
 
-            if (jsonValue == null) {
-                log.warn("분석 결과 없음: requestId={}", requestId);
-                return Optional.empty();
-            }
-
-            T result = objectMapper.readValue(jsonValue, resultType);
-            log.info("분석 결과 조회 성공: requestId={}", requestId);
-            return Optional.of(result);
         } catch (Exception e) {
-            log.error("분석 결과 조회 실패: requestId={}", requestId, e);
+            log.error("Redis 조회 중 오류 발생: key={}, error={}", key, e.getMessage());
             return Optional.empty();
         }
-    }
-
-    /**
-     * 분석 결과 삭제
-     */
-    public void deleteAnalysisResult(String requestId) {
-        String key = ANALYSIS_KEY_PREFIX + requestId;
-        redisTemplate.delete(key);
-        log.info("분석 결과 삭제 완료: requestId={}", requestId);
-    }
-
-    /**
-     * 분석 결과 존재 여부 확인
-     */
-    public boolean existsAnalysisResult(String requestId) {
-        String key = ANALYSIS_KEY_PREFIX + requestId;
-        Boolean exists = redisTemplate.hasKey(key);
-        return Boolean.TRUE.equals(exists);
     }
 }

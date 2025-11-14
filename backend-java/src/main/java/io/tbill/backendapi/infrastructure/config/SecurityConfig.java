@@ -48,7 +48,7 @@ public class SecurityConfig {
             "/v3/api-docs/**",
 
             // Python Service
-            "/api/analysis/**",
+            "/api/v1/analysis/**",
 
             // Actuator
             "/actuator/**",
