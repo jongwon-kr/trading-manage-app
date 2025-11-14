@@ -21,10 +21,9 @@ export const API_ENDPOINTS = {
     SEARCH: "/journals/search",
   },
   ANALYSIS: {
-    BASE: "/analysis",
-    TECHNICAL: "/analysis/technical",
-    MARKET_TREND: "/analysis/market-trend",
-    RESULT: (requestId: string) => `/analysis/result/${requestId}`,
+    TECHNICAL: "/v1/analysis/technical",
+    MARKET_TREND: "/v1/analysis/market-trend",
+    RESULT: (id: string) => `/v1/analysis/result/${id}`,
   },
 };
 

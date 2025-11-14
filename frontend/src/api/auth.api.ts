@@ -1,34 +1,30 @@
 import axiosInstance from "./axios";
+import { API_ENDPOINTS, USER_KEY } from "@/utils/constants";
 import {
-  AuthResponse as ApiAuthResponse,
-  AuthResponse as ThunkAuthResponse,
+  AuthResponse,
   LoginRequest,
   RegisterRequest,
   User,
-} from "../types/auth.types";
-import { API_ENDPOINTS } from "../utils/constants";
-
-type ApiLoginResponse = Omit<ThunkAuthResponse, "accessToken">;
-type ApiRefreshResponse = Omit<ThunkAuthResponse, "accessToken">;
+} from "@/types/auth.types";
+// [수정] 순환 참조를 유발하는 store 및 slice 임포트 제거
+// import { store } from "@/store";
+// import { logoutUser } from "@/store/slices/authSlice";
 
 export const authAPI = {
-  login: async (credentials: LoginRequest): Promise<ThunkAuthResponse> => {
-    const response = await axiosInstance.post<ApiLoginResponse>(
+  /**
+   * 로그인
+   */
+  login: async (credentials: LoginRequest): Promise<AuthResponse> => {
+    const response = await axiosInstance.post<AuthResponse>(
       API_ENDPOINTS.AUTH.LOGIN,
       credentials
     );
-
-    const accessToken = response.headers["access"];
-    if (!accessToken) {
-      throw new Error("로그인 응답에서 'access' 헤더를 찾을 수 없습니다.");
-    }
-
-    return {
-      ...response.data,
-      accessToken,
-    };
+    return response.data;
   },
 
+  /**
+   * 회원가입
+   */
   register: async (data: RegisterRequest): Promise<User> => {
     const response = await axiosInstance.post<User>(
       API_ENDPOINTS.USERS.REGISTER,
@@ -37,37 +33,40 @@ export const authAPI = {
     return response.data;
   },
 
-  refresh: async (): Promise<ThunkAuthResponse> => {
-    const response = await axiosInstance.post<ApiRefreshResponse>(
-      API_ENDPOINTS.AUTH.REFRESH
-    );
-
-    const accessToken = response.headers["access"];
-    if (!accessToken) {
-      throw new Error("토큰 갱신 응답에서 'access' 헤더를 찾을 수 없습니다.");
+  /**
+   * 로그아웃
+   */
+  logout: async (): Promise<void> => {
+    try {
+      await axiosInstance.post(API_ENDPOINTS.AUTH.LOGOUT);
+    } catch (error) {
+      console.error("Logout API call failed:", error);
+      // API 호출이 실패하더라도, thunk가 후속 처리를 하므로 여기서 에러를 다시 던지지 않습니다.
     }
-    return {
-      ...response.data,
-      accessToken,
-    };
+    // [수정] thunk가 처리해야 할 로직(localStorage, dispatch)을 API 파일에서 제거
+    // finally {
+    //   localStorage.removeItem(USER_KEY);
+    //   store.dispatch(logoutUser());
+    // }
   },
 
-  checkUsername: async (
-    username: string
-  ): Promise<{ isAvailable: boolean }> => {
-    const response = await axiosInstance.get<{ isAvailable: boolean }>(
-      API_ENDPOINTS.USERS.CHECK_USERNAME,
-      { params: { username } }
+  /**
+   * 세션 갱신
+   */
+  refresh: async (): Promise<AuthResponse> => {
+    const response = await axiosInstance.post<AuthResponse>(
+      API_ENDPOINTS.AUTH.REFRESH
     );
     return response.data;
   },
 
-  logout: async (): Promise<void> => {
-    await axiosInstance.post(API_ENDPOINTS.AUTH.LOGOUT);
-  },
-
-  getCurrentUser: async (): Promise<User> => {
-    const response = await axiosInstance.get<User>(API_ENDPOINTS.USERS.ME);
+  /**
+   * 아이디(이메일) 중복 확인
+   */
+  checkUsername: async (username: string): Promise<boolean> => {
+    const response = await axiosInstance.get<boolean>(
+      API_ENDPOINTS.USERS.CHECK_USERNAME(username)
+    );
     return response.data;
   },
 };

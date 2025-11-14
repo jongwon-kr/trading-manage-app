@@ -1,5 +1,4 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { authAPI } from "@/api/auth.api";
 import {
   AuthState,
   LoginRequest,
@@ -22,6 +21,8 @@ export const refreshSession = createAsyncThunk(
   "auth/refreshSession",
   async (_, { rejectWithValue }) => {
     try {
+      // [수정] thunk 내부에서 동적으로 import
+      const { authAPI } = await import("@/api/auth.api");
       const response = await authAPI.refresh();
       localStorage.setItem(USER_KEY, JSON.stringify(response.user));
       return response;
@@ -36,6 +37,8 @@ export const loginUser = createAsyncThunk(
   "auth/login",
   async (credentials: LoginRequest, { dispatch, rejectWithValue }) => {
     try {
+      // [수정] thunk 내부에서 동적으로 import
+      const { authAPI } = await import("@/api/auth.api");
       const response = await authAPI.login(credentials);
       localStorage.setItem(USER_KEY, JSON.stringify(response.user));
 
@@ -52,6 +55,8 @@ export const registerUser = createAsyncThunk(
   "auth/register",
   async (data: RegisterRequest, { rejectWithValue }) => {
     try {
+      // [수정] thunk 내부에서 동적으로 import
+      const { authAPI } = await import("@/api/auth.api");
       const user = await authAPI.register(data);
       return user;
     } catch (error: any) {
@@ -64,6 +69,8 @@ export const logoutUser = createAsyncThunk(
   "auth/logout",
   async (_, { rejectWithValue }) => {
     try {
+      // [수정] thunk 내부에서 동적으로 import
+      const { authAPI } = await import("@/api/auth.api");
       await authAPI.logout();
     } catch (error: any) {
       console.error("Logout API failed: ", error);

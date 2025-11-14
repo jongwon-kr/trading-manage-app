@@ -1,6 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { API_BASE_URL, API_ENDPOINTS, USER_KEY } from "../utils/constants";
-import { authAPI } from "./auth.api";
 import { AppStore } from "../store";
 import { refreshSession, logoutUser } from "../store/slices/authSlice";
 
