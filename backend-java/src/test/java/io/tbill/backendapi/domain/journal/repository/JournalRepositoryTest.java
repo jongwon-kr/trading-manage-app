@@ -2,6 +2,7 @@ package io.tbill.backendapi.domain.journal.repository;
 
 import io.tbill.backendapi.domain.journal.entity.Journal;
 import io.tbill.backendapi.domain.journal.entity.MarketType;
+import io.tbill.backendapi.domain.journal.entity.TradeType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,8 @@ class JournalRepositoryTest {
                 .authorEmail(testEmail)
                 .market(MarketType.STOCK)
                 .symbol("AAPL")
+                .tradeType(TradeType.LONG)
+                .quantity(new BigDecimal("10"))
                 .entryPrice(new BigDecimal("150.50"))
                 .stopLossPrice(new BigDecimal("145.00"))
                 .realizedPnL(new BigDecimal("500.00"))
@@ -48,6 +51,8 @@ class JournalRepositoryTest {
                 .authorEmail(testEmail)
                 .market(MarketType.CRYPTO)
                 .symbol("BTC")
+                .tradeType(TradeType.LONG)
+                .quantity(new BigDecimal("0.5"))
                 .entryPrice(new BigDecimal("45000.00"))
                 .stopLossPrice(new BigDecimal("42000.00"))
                 .reasoning("테스트 매매 이유 2")

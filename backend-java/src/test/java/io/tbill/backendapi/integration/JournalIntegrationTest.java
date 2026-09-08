@@ -2,6 +2,7 @@ package io.tbill.backendapi.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.tbill.backendapi.domain.journal.entity.MarketType;
+import io.tbill.backendapi.domain.journal.entity.TradeType;
 import io.tbill.backendapi.domain.journal.repository.JournalRepository;
 import io.tbill.backendapi.presentation.journal.dto.JournalApiDto;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,6 +56,8 @@ class JournalIntegrationTest {
         JournalApiDto.CreateRequest request = new JournalApiDto.CreateRequest();
         request.setMarket(MarketType.STOCK);
         request.setSymbol("AAPL");
+        request.setTradeType(TradeType.LONG);
+        request.setQuantity(new BigDecimal("10"));
         request.setEntryPrice(new BigDecimal("150.00"));
         request.setStopLossPrice(new BigDecimal("145.00"));
 

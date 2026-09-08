@@ -74,7 +74,7 @@ export function DatePickerWithRange({
             numberOfMonths={2}
             locale={ko}
             // 월/연도 드롭다운 추가
-            captionLayout="dropdown-nav"
+            captionLayout="dropdown"
             fromYear={2015}
             toYear={new Date().getFullYear() + 5}
           />
@@ -169,7 +169,7 @@ export function DatePicker({
                     onSelect={handleDateSelect}
                     initialFocus
                     locale={ko}
-                    captionLayout="dropdown-nav"
+                    captionLayout="dropdown"
                     fromYear={2015}
                     toYear={new Date().getFullYear() + 5}
                     defaultMonth={date}

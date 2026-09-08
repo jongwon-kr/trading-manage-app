@@ -3,15 +3,18 @@ package io.tbill.backendapi.presentation.journal.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.tbill.backendapi.domain.journal.dto.JournalDto;
 import io.tbill.backendapi.domain.journal.entity.MarketType;
+import io.tbill.backendapi.domain.journal.entity.TradeType;
 import io.tbill.backendapi.domain.journal.service.JournalService;
 import io.tbill.backendapi.global.utils.auth.AuthUtils;
 import io.tbill.backendapi.presentation.journal.dto.JournalApiDto;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -39,13 +42,21 @@ class JournalControllerTest {
 
     private ObjectMapper objectMapper;
 
+    // [수정] try-with-resources 로 감싸면 setUp 종료 시점에 정적 목이 닫혀
+    // 테스트 본문에서는 실제 AuthUtils 가 호출된다. 필드로 들고 @AfterEach 에서 닫는다.
+    private MockedStatic<AuthUtils> authUtilsMock;
+
     @BeforeEach
     void setUp() {
-        try (var authUtilsMock = mockStatic(AuthUtils.class)) {
-            objectMapper = new ObjectMapper();
-            authUtilsMock.when(AuthUtils::getCurrentUserEmail)
-                    .thenReturn("test@example.com");
-        }
+        objectMapper = new ObjectMapper();
+        authUtilsMock = mockStatic(AuthUtils.class);
+        authUtilsMock.when(AuthUtils::getCurrentUserEmail)
+                .thenReturn("test@example.com");
+    }
+
+    @AfterEach
+    void tearDown() {
+        authUtilsMock.close();
     }
 
     @Test
@@ -55,6 +66,8 @@ class JournalControllerTest {
         JournalApiDto.CreateRequest request = new JournalApiDto.CreateRequest();
         request.setMarket(MarketType.STOCK);
         request.setSymbol("AAPL");
+        request.setTradeType(TradeType.LONG);
+        request.setQuantity(new BigDecimal("10"));
         request.setEntryPrice(new BigDecimal("150.00"));
         request.setStopLossPrice(new BigDecimal("145.00"));
 
@@ -85,7 +98,7 @@ class JournalControllerTest {
         when(journalService.getMyJournals(any(), any())).thenReturn(mockPage);
 
         // when
-        ResponseEntity<Page<JournalApiDto.JournalSummaryResponse>> response =
+        ResponseEntity<JournalApiDto.PagedResponse<JournalApiDto.JournalSummaryResponse>> response =
                 journalController.getMyJournals(0, 20, "createdAt", "DESC");
 
         // then
@@ -158,6 +171,8 @@ class JournalControllerTest {
                         .authorEmail("test@example.com")
                         .market(MarketType.STOCK)
                         .symbol("AAPL")
+                        .tradeType(TradeType.LONG)
+                        .quantity(new BigDecimal("10"))
                         .entryPrice(new BigDecimal("150.00"))
                         .stopLossPrice(new BigDecimal("145.00"))
                         .build()
@@ -170,6 +185,8 @@ class JournalControllerTest {
                         .authorEmail("test@example.com")
                         .market(MarketType.STOCK)
                         .symbol("AAPL")
+                        .tradeType(TradeType.LONG)
+                        .quantity(new BigDecimal("10"))
                         .entryPrice(new BigDecimal("150.00"))
                         .build()
         );

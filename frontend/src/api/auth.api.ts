@@ -1,5 +1,5 @@
 import axiosInstance from "./axios";
-import { API_ENDPOINTS, USER_KEY } from "@/utils/constants";
+import { API_ENDPOINTS } from "@/utils/constants";
 import {
   AuthResponse,
   LoginRequest,
@@ -63,8 +63,10 @@ export const authAPI = {
   /**
    * 아이디(이메일) 중복 확인
    */
-  checkUsername: async (username: string): Promise<boolean> => {
-    const response = await axiosInstance.get<boolean>(
+  checkUsername: async (
+    username: string
+  ): Promise<{ isAvailable: boolean }> => {
+    const response = await axiosInstance.get<{ isAvailable: boolean }>(
       API_ENDPOINTS.USERS.CHECK_USERNAME(username)
     );
     return response.data;

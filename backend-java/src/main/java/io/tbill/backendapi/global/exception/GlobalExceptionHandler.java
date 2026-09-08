@@ -3,6 +3,7 @@ package io.tbill.backendapi.global.exception;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -32,6 +33,19 @@ public class GlobalExceptionHandler {
             errors.put(fieldName, errorMessage);
         });
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
+    }
+
+    /**
+     * 인증 정보 없이 인증이 필요한 작업에 도달한 경우.
+     * <p>
+     * @RestControllerAdvice 가 ExceptionTranslationFilter 보다 먼저 예외를 잡으므로,
+     * 이 핸들러가 없으면 아래 handleException 이 500 으로 삼켜버린다.
+     */
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthenticationException(AuthenticationException e) {
+        log.warn("인증 실패: {}", e.getMessage());
+        ErrorResponse errorResponse = new ErrorResponse("UNAUTHORIZED", e.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
     }
 
     @ExceptionHandler(Exception.class)

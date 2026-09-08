@@ -3,7 +3,6 @@ import {
   AuthState,
   LoginRequest,
   RegisterRequest,
-  User,
   AuthResponse,
 } from "@/types/auth.types";
 import { USER_KEY } from "@/utils/constants";
@@ -35,7 +34,7 @@ export const refreshSession = createAsyncThunk(
 
 export const loginUser = createAsyncThunk(
   "auth/login",
-  async (credentials: LoginRequest, { dispatch, rejectWithValue }) => {
+  async (credentials: LoginRequest, { rejectWithValue }) => {
     try {
       // [수정] thunk 내부에서 동적으로 import
       const { authAPI } = await import("@/api/auth.api");
@@ -67,7 +66,7 @@ export const registerUser = createAsyncThunk(
 
 export const logoutUser = createAsyncThunk(
   "auth/logout",
-  async (_, { rejectWithValue }) => {
+  async () => {
     try {
       // [수정] thunk 내부에서 동적으로 import
       const { authAPI } = await import("@/api/auth.api");

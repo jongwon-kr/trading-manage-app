@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
-import { MarketData, PreMarketAnalysis } from "@/types/analysis.types";
+import { MarketData, PreMarketAnalysis } from "@/types/analysis";
 import {
   JournalApiDto,
 } from "@/types/journal.types";
@@ -200,8 +200,8 @@ const tradingSlice = createSlice({
       state.isLoading = action.payload;
     },
     updateStockPrice: (
-      state,
-      action: PayloadAction<{
+      _state,
+      _action: PayloadAction<{
         symbol: string;
         price: number;
         change: number;

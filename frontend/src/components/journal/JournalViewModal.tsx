@@ -9,7 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { JournalApiDto, MarketType, TradeType } from "@/types/journal.types";
+import { JournalApiDto, TradeType } from "@/types/journal.types";
 import {
   TrendingUp,
   TrendingDown,

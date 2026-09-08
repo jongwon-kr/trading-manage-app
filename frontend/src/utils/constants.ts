@@ -9,7 +9,8 @@ export const API_ENDPOINTS = {
   },
   USERS: {
     REGISTER: "/users/sign-up",
-    CHECK_USERNAME: "/users/check-username",
+    CHECK_USERNAME: (username: string) =>
+      `/users/check-username?username=${encodeURIComponent(username)}`,
     ME: "/users/me",
   },
   JOURNALS: {

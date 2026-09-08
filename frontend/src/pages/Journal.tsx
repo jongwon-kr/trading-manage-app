@@ -30,7 +30,6 @@ import {
   Filter,
   Trash2,
   CalendarDays,
-  Check,
   X,
   Package,
 } from "lucide-react";
@@ -130,9 +129,6 @@ const JournalCard = ({
   onDelete: (id: number) => void;
 }) => {
   const isLong = journal.tradeType === TradeType.LONG;
-  const pnl = journal.realizedPnL;
-  const isWin = pnl !== null && pnl > 0;
-  const isLoss = pnl !== null && pnl < 0;
 
   return (
     <Card className="hover:shadow-lg transition-shadow duration-200">
@@ -290,6 +286,7 @@ export function Journal() {
       },
       cancel: {
         label: "취소",
+        onClick: () => {},
       },
       duration: 5000,
     });
