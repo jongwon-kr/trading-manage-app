@@ -37,7 +37,7 @@ const Login = () => {
 
   return (
     <div className="flex min-h-[70vh] items-center justify-center">
-      <div className="w-full max-w-md p-6 space-y-6 rounded-lg bg-white shadow">
+      <div className="w-full max-w-md p-6 space-y-6 rounded-lg border bg-card text-card-foreground shadow">
         <h1 className="text-2xl font-bold text-center">로그인</h1>
         <form className="space-y-4" onSubmit={handleSubmit}>
           <Input
