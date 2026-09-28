@@ -46,6 +46,14 @@ spring:
         spring.json.trusted.packages: "*"
 
 # ========================================
+# Python 시세 API (로컬용)
+# ========================================
+python:
+  market:
+    base-url: ${PYTHON_MARKET_BASE_URL:http://localhost:8000}
+    internal-token: ${PYTHON_INTERNAL_TOKEN:local-dev-token}
+
+# ========================================
 # 로깅 (로컬용)
 # ========================================
 logging:

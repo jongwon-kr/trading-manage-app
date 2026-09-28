@@ -6,8 +6,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -46,6 +48,19 @@ public class GlobalExceptionHandler {
         log.warn("인증 실패: {}", e.getMessage());
         ErrorResponse errorResponse = new ErrorResponse("UNAUTHORIZED", e.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+    }
+
+    /**
+     * 잘못된 쿼리 파라미터(enum 값 오류 등)·필수 파라미터 누락은 400.
+     * 없으면 아래 handleException 이 500 으로 응답한다.
+     */
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class, MissingServletRequestParameterException.class})
+    public ResponseEntity<ErrorResponse> handleBadRequestParameter(Exception e) {
+        log.warn("잘못된 요청 파라미터: {}", e.getMessage());
+        String message = e instanceof MethodArgumentTypeMismatchException mismatch
+                ? "파라미터 '" + mismatch.getName() + "' 값이 올바르지 않습니다: " + mismatch.getValue()
+                : "필수 파라미터가 없습니다: " + ((MissingServletRequestParameterException) e).getParameterName();
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse("BAD_REQUEST", message));
     }
 
     @ExceptionHandler(MarketException.class)
