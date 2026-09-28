@@ -65,6 +65,34 @@ class AnalysisControllerTest {
     }
 
     @Test
+    @DisplayName("백테스트 요청은 기간을 LocalDateTime 으로, 지정한 파라미터만 전달한다")
+    void requestBacktest() throws Exception {
+        var body = new AnalysisApiDto.BacktestRequest(InstrumentMarket.CRYPTO, "KRW-BTC",
+                java.time.LocalDate.of(2024, 1, 1), java.time.LocalDate.of(2025, 1, 1),
+                65d, null, null, null, null, null, null, null);
+
+        controller.requestBacktest(body);
+
+        ArgumentCaptor<AnalysisRequest> captor = ArgumentCaptor.forClass(AnalysisRequest.class);
+        verify(kafkaProducerService).sendAnalysisRequest(eq(KafkaTopics.BACKTEST_REQUEST_TOPIC), captor.capture());
+        AnalysisRequest sent = captor.getValue();
+        assertThat(sent.getAnalysisType()).isEqualTo(AnalysisType.BACKTEST);
+        assertThat(sent.getStartDate()).isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 0, 0));
+        Map<String, Object> params = objectMapper.readValue(sent.getParameters(), new TypeReference<>() {});
+        assertThat(params).containsOnlyKeys("buyThreshold");
+    }
+
+    @Test
+    @DisplayName("백테스트 시작일이 종료일 이후면 400(IllegalArgumentException)")
+    void backtestInvalidRange() {
+        var body = new AnalysisApiDto.BacktestRequest(InstrumentMarket.CRYPTO, "KRW-BTC",
+                java.time.LocalDate.of(2025, 1, 1), java.time.LocalDate.of(2024, 1, 1),
+                null, null, null, null, null, null, null, null);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> controller.requestBacktest(body))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     @DisplayName("결과가 없으면 PROCESSING, 있으면 Python JSON 그대로 반환")
     void getResult() throws Exception {
         when(analysisResultCacheService.getAnalysisResult("a")).thenReturn(Optional.empty());

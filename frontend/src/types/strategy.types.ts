@@ -96,3 +96,75 @@ export interface RequestIdResponse {
   requestId: string;
   message: string;
 }
+
+// ===== 백테스트 (backend-python app/analysis/backtest.py) =====
+
+export interface BacktestParams {
+  buyThreshold: number;
+  sellThreshold: number;
+  stopAtr: number;
+  takeProfitR: number;
+  feeBps: number;
+  taxBps: number;
+  slippageBps: number;
+  initialCapital: number;
+}
+
+export interface BacktestRequest extends Partial<BacktestParams> {
+  market: MarketCode;
+  symbol: string;
+  /** YYYY-MM-DD */
+  from?: string;
+  to?: string;
+}
+
+export interface BacktestMetrics {
+  totalReturn: number;
+  cagr: number;
+  mdd: number;
+  sharpe: number;
+  trades: number;
+  winRate: number | null;
+  avgWin: number | null;
+  avgLoss: number | null;
+  profitFactor: number | null;
+  avgHoldingBars: number | null;
+  exposure?: number;
+}
+
+export interface BacktestTrade {
+  entryTime: string;
+  entryPrice: number;
+  exitTime: string;
+  exitPrice: number;
+  exitReason: "SIGNAL" | "STOP" | "TARGET" | "END";
+  returnPct: number;
+  bars: number;
+}
+
+export interface EquityPoint {
+  /** epoch 초 (거래일 00:00 UTC) */
+  time: number;
+  equity: number;
+  benchmark: number;
+  drawdown: number;
+  score: number | null;
+}
+
+export interface BacktestResult extends AnalysisEnvelope {
+  modelVersion: string;
+  market: MarketCode;
+  symbol: string;
+  name: string;
+  currency: string;
+  from: string;
+  to: string;
+  bars: number;
+  params: BacktestParams;
+  metrics: BacktestMetrics;
+  benchmarkMetrics: BacktestMetrics;
+  equityCurve: EquityPoint[];
+  trades: BacktestTrade[];
+  warnings: string[];
+  dataSources: Record<string, string>;
+}

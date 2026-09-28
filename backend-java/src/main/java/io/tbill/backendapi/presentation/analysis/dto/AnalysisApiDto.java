@@ -6,6 +6,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -43,6 +44,42 @@ public class AnalysisApiDto {
      * (Frontend: AnalysisResultData)
      * Java는 이 DTO를 직접 사용하지 않고, Python이 저장한 JSON(Object)을 반환합니다.
      */
+
+    /**
+     * POST /backtest 요청 본문. from/to 생략 시 최근 3년.
+     */
+    public record BacktestRequest(
+            @NotNull(message = "market 은 필수입니다.") InstrumentMarket market,
+            @NotBlank(message = "symbol 은 필수입니다.") String symbol,
+            LocalDate from,
+            LocalDate to,
+            @DecimalMin("0") @DecimalMax("100") Double buyThreshold,
+            @DecimalMin("0") @DecimalMax("100") Double sellThreshold,
+            @Positive Double stopAtr,
+            @Positive Double takeProfitR,
+            @DecimalMin("0") Double feeBps,
+            @DecimalMin("0") Double taxBps,
+            @DecimalMin("0") Double slippageBps,
+            @Positive Double initialCapital
+    ) {
+        /** 지정한 값만 Python 으로 전달 (나머지는 시장별 기본값) */
+        public Map<String, Object> toParameters() {
+            Map<String, Object> params = new HashMap<>();
+            putIfPresent(params, "buyThreshold", buyThreshold);
+            putIfPresent(params, "sellThreshold", sellThreshold);
+            putIfPresent(params, "stopAtr", stopAtr);
+            putIfPresent(params, "takeProfitR", takeProfitR);
+            putIfPresent(params, "feeBps", feeBps);
+            putIfPresent(params, "taxBps", taxBps);
+            putIfPresent(params, "slippageBps", slippageBps);
+            putIfPresent(params, "initialCapital", initialCapital);
+            return params;
+        }
+
+        private static void putIfPresent(Map<String, Object> map, String key, Object value) {
+            if (value != null) map.put(key, value);
+        }
+    }
 
     /**
      * POST /strategy 요청 본문
