@@ -226,6 +226,8 @@ Python config is a single pydantic-settings `Settings` in `app/config.py` (env v
 
 ## Conventions
 
+**README updates always follow the `update-readme` project skill** (`.claude/skills/update-readme/SKILL.md`): re-capture feature screens with `cd frontend && npm run docs:screenshots` (Playwright, `frontend/scripts/readme-screenshots.mjs` → `docs/images/`), inspect every PNG, and document each feature as "what it does / how to use it / screenshot". Add a `SHOTS` entry for every new screen.
+
 Commit messages use a Korean-language bracketed prefix: `[Feat]`, `[Update]`, `[Fix]`, `[Refactor]`, `[Build]`, `[Infra]`, `[Remove]` — e.g. `[Update] 분석 요청 API 관련 기능 추가`. PRs follow `.github/pull_request_template.md`.
 
 Frontend imports use the `@/` alias for `src/`. UI is shadcn/ui (`components.json`, `components/ui/`) — add components rather than hand-rolling primitives.
