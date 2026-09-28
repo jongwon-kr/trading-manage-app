@@ -321,3 +321,5 @@ sketch
 .ionide
 
 # End of https://www.toptal.com/developers/gitignore/api/intellij+all,visualstudiocode,java,python,react
+# backend-python 심볼 마스터 디스크 스냅샷
+backend-python/data/

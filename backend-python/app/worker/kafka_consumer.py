@@ -2,7 +2,7 @@ from confluent_kafka import Consumer, KafkaException
 import json
 import logging
 from typing import Callable
-from config import settings
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 

@@ -1,10 +1,10 @@
 import logging
 import threading
 import sys
-from services.kafka_consumer import KafkaConsumerService
-from services.analysis_handler import AnalysisHandler
-from config import settings
-# from utils.logger import setup_logger  <- 이 줄을 삭제하거나 주석 처리합니다.
+from confluent_kafka.admin import AdminClient, NewTopic
+from app.worker.kafka_consumer import KafkaConsumerService
+from app.worker.handler import AnalysisHandler
+from app.config import settings
 
 # 1. 로깅 설정을 Python 기본 logging.basicConfig로 변경합니다.
 # 이렇게 하면 루트 로거가 설정되어 모든 모듈에서 동일한 포맷을 사용합니다.
@@ -16,6 +16,21 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+def ensure_topics(topics: list[str]):
+    """구독할 토픽이 없으면 생성한다.
+    (토픽이 없는 상태로 구독하면 librdkafka 가 메타데이터 갱신 주기(기본 5분)까지 메시지를 받지 못한다)"""
+    admin = AdminClient({'bootstrap.servers': settings.KAFKA_BOOTSTRAP_SERVERS})
+    existing = set(admin.list_topics(timeout=10).topics)
+    missing = [NewTopic(t, num_partitions=1, replication_factor=1) for t in topics if t not in existing]
+    if not missing:
+        return
+    for topic, future in admin.create_topics(missing).items():
+        try:
+            future.result()
+            logger.info(f"토픽 생성 완료: {topic}")
+        except Exception as e:
+            logger.warning(f"토픽 생성 실패(이미 존재할 수 있음): {topic}, {e}")
 
 def start_consumer(topic: str, handler: callable):
     """지정된 토픽에 대한 Kafka Consumer를 시작"""
@@ -45,6 +60,8 @@ if __name__ == "__main__":
         settings.BACKTEST_REQUEST_TOPIC
     ]
     
+    ensure_topics([t for t in topics if t])
+
     threads = []
     
     for topic in topics:

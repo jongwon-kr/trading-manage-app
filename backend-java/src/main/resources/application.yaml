@@ -36,16 +36,16 @@ spring:
       properties:
         spring.json.trusted.packages: "*"
 
-  management:
-    endpoints:
-      web:
-        exposure:
-          include: "health,prometheus"
-    health:
-      readiness-state:
-        enabled: true
-      liveness-state:
-        enabled: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,prometheus"
+  health:
+    readiness-state:
+      enabled: true
+    liveness-state:
+      enabled: true
 
 jwt:
   secret: ${JWT_SECRET}

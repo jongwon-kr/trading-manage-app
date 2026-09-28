@@ -94,7 +94,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 `tbill` — a trading journal + AI analysis app. Three deployables in one repo, glued by Kafka and Redis:
 
 - `backend-java/` — Spring Boot 3.3.1 / Java 21 REST API (`io.tbill.backendapi`). Owns all persisted data (PostgreSQL/JPA) and JWT auth. Port 8080.
-- `backend-python/` — headless Kafka consumer that runs technical/market analysis with pandas/numpy. No HTTP server (see gotchas). Port 8000 is only declared, never bound.
+- `backend-python/` — one package (`app/`), three entrypoints: `app.api.main` (internal FastAPI market-data API, port 8000, `X-Internal-Token`), `app.worker.main` (Kafka analysis consumer), `app.stream.main` (Upbit realtime, single replica).
 - `frontend/` — React 19 + TypeScript + Vite + Redux Toolkit + shadcn/ui + Tailwind. Port 5173.
 - `infra/` — raw Kubernetes manifests (no Helm/Kustomize).
 
@@ -121,9 +121,11 @@ Java (`backend-java/`, use `./gradlew` or `gradlew.bat`):
 Python (`backend-python/`):
 
 ```bash
-pip install -r requirements.txt
-python main.py             # starts one consumer thread per request topic
-python test_kafka.py       # standalone Kafka connectivity probe
+python -m venv .venv && .venv/Scripts/pip install -r requirements-dev.txt
+.venv/Scripts/python -m uvicorn app.api.main:app --port 8000   # internal market-data API
+.venv/Scripts/python -m app.worker.main                         # Kafka consumers (creates missing topics)
+.venv/Scripts/python -m pytest                                  # no network; fakeredis + fixtures
+.venv/Scripts/python test_kafka.py                              # standalone Kafka probe
 ```
 
 Frontend (`frontend/`):
@@ -145,7 +147,7 @@ Swagger UI: http://localhost:8080/swagger-ui/index.html (local profile only). Ka
 Java never calls Python over HTTP. The handoff is fire-and-forget over Kafka with a Redis rendezvous:
 
 1. `POST /api/v1/analysis/technical?symbol=...` — `AnalysisController` mints a `requestId` (UUID), publishes an `AnalysisRequest` to a per-type Kafka topic, and returns `201` with just the id.
-2. Python's `main.py` runs one `KafkaConsumerService` thread per topic, all pointed at the single `AnalysisHandler.handle_analysis_request`, which dispatches on the `analysisType` field rather than on which topic delivered it.
+2. Python's `app/worker/main.py` runs one `KafkaConsumerService` thread per topic, all pointed at the single `AnalysisHandler.handle_analysis_request`, which dispatches on the `analysisType` field rather than on which topic delivered it.
 3. `AnalysisHandler` writes the result — successes _and_ failures (`status: "FAILED"`) — to Redis at `analysis:{requestId}` with a 1-hour TTL.
 4. The frontend polls `GET /api/v1/analysis/result/{id}`. A cache miss returns `{"status": "PROCESSING"}`; a hit returns Python's JSON verbatim (Java deserializes to `Object` and re-emits, so the Python schema is the API contract for this endpoint).
 
@@ -154,7 +156,7 @@ Two contracts must be kept in sync manually across languages:
 - **Topic names** — `infrastructure/kafka/KafkaTopics.java` and `config/settings.py` hold duplicate string literals.
 - **Redis key format** — `AnalysisResultCacheService.KEY_PREFIX` (`"analysis:"`) and `redis_service.py`'s f-strings.
 
-Java serializes with Spring Kafka's `JsonSerializer` (camelCase, `spring.json.trusted.packages: "*"`); Python parses with Pydantic models in `models/schemas.py` that alias camelCase onto snake_case fields. A renamed field in `AnalysisRequest.java` silently breaks the Python side at runtime.
+Java serializes with Spring Kafka's `JsonSerializer` (camelCase, `spring.json.trusted.packages: "*"`); Python parses with Pydantic models in `app/analysis/schemas.py` that alias camelCase onto snake_case fields. A renamed field in `AnalysisRequest.java` silently breaks the Python side at runtime.
 
 `ANALYSIS_RESPONSE_TOPIC` exists in `settings.py` but nothing produces or consumes it — the return path is Redis only.
 
@@ -185,11 +187,11 @@ Java config is layered: `application.yaml` (shared, all values from env vars wit
 
 Tests use the `test` profile: in-memory H2 in PostgreSQL mode, `ddl-auto: create-drop`, `SecurityAutoConfiguration` excluded. Repository tests use `@DataJpaTest` + `@AutoConfigureTestDatabase(Replace.NONE)`; service and controller tests are plain Mockito (`@ExtendWith(MockitoExtension.class)`), not `@SpringBootTest`. Only `journal` has test coverage.
 
-Python config is a single `@dataclass Settings` in `config/settings.py` reading env vars via `python-dotenv`, with localhost defaults. No `.env` files are committed.
+Python config is a single pydantic-settings `Settings` in `app/config.py` (env vars / `.env`), with localhost defaults. No `.env` files are committed.
 
 ## Gotchas
 
-- `backend-python/Dockerfile` runs `uvicorn main:app`, but `main.py` has no `app` object — it is a `__main__` script. The container as written will not start; run `python main.py` locally. `requirements.txt` still lists `fastapi`/`uvicorn` from an earlier HTTP design and is UTF-16 encoded.
+- `backend-python/Dockerfile` defaults to the API; compose (`--profile app`) and `infra/app-python.yaml` override `command` for the worker/stream. Compose's Kafka advertises `localhost:9092` to the host and `kafka:29092` to containers.
 - `test_integration.ps1` targets `/api/analysis/...` and expects a Python HTTP health endpoint on `:8000`; the real routes are `/api/v1/analysis/...` and there is no Python server. Fix the paths before trusting it.
 - `global/common/ApiResponse.java`, `global/exception/ErrorCode.java`, `global/exception/CustomException.java`, and `global/exception/TbillExceptionHandler.java` are empty placeholder classes. Error responses actually come from `GlobalExceptionHandler`'s `ErrorResponse` record.
 - Several security classes are duplicated with only one wired in: `JwtProvider` (used) vs `JwtTokenProvider`, `CustomUserDetailsService` vs `UserDetailsServiceImpl`. Check `SecurityConfig` before extending either.

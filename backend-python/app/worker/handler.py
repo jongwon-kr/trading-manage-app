@@ -1,9 +1,11 @@
+import json
 import logging
 from datetime import datetime
-from models.schemas import AnalysisRequest, AnalysisResult, AnalysisType, TechnicalIndicators
-from services.technical_analyzer import TechnicalAnalyzer
-from services.market_analyzer import MarketAnalyzer  # MarketAnalyzer 임포트
-from services.redis_service import RedisService
+from app.analysis.schemas import AnalysisRequest, AnalysisResult, AnalysisType, TechnicalIndicators
+from app.analysis.legacy.technical_analyzer import TechnicalAnalyzer
+from app.analysis.legacy.market_analyzer import MarketAnalyzer  # MarketAnalyzer 임포트
+from app.config import settings
+from app.core.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +15,6 @@ class AnalysisHandler:
     def __init__(self):
         self.technical_analyzer = TechnicalAnalyzer()
         self.market_analyzer = MarketAnalyzer()  # MarketAnalyzer 초기화
-        self.redis_service = RedisService()
         logger.info("AnalysisHandler 초기화 완료")
 
     def handle_analysis_request(self, message: dict):
@@ -44,10 +45,7 @@ class AnalysisHandler:
                 raise ValueError(f"지원하지 않는 분석 타입: {request.analysis_type}")
             
             # Redis에 결과 저장
-            self.redis_service.save_analysis_result(
-                request.request_id,
-                result.model_dump(mode='json')
-            )
+            self._save_result(request.request_id, result.model_dump(mode='json'))
             
             logger.info(f"분석 요청 처리 완료: request_id={request.request_id}")
             
@@ -66,10 +64,15 @@ class AnalysisHandler:
                 error_message=str(e)
             )
             
-            self.redis_service.save_analysis_result(
-                request_id,
-                error_result.model_dump(mode='json')
-            )
+            self._save_result(request_id, error_result.model_dump(mode='json'))
+
+    def _save_result(self, request_id: str, result: dict) -> None:
+        """분석 결과를 Redis analysis:{requestId} 에 저장 (Java AnalysisResultCacheService 가 조회)"""
+        try:
+            get_redis().set(f"analysis:{request_id}", json.dumps(result), ex=settings.ANALYSIS_RESULT_TTL)
+            logger.info(f"분석 결과 저장 완료: {request_id}")
+        except Exception as e:
+            logger.error(f"분석 결과 저장 실패: {request_id}, error: {e}")
 
     def _handle_technical_analysis(self, request: AnalysisRequest) -> AnalysisResult:
         """기술적 분석 처리"""
