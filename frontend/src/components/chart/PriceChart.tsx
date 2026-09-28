@@ -19,12 +19,20 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import { chartPalette, chartThemeOptions, LINE_COLORS } from "@/lib/chart-theme";
-import { isTailUpdate } from "@/lib/candles";
+import { applyTick, isTailUpdate } from "@/lib/candles";
 import { bollinger, macd, rsi, sma, type Series } from "@/lib/indicators";
 import { isIntraday, marketTimeZone } from "@/lib/market";
 import { formatCompact, formatPrice, pricePrecision } from "@/lib/format";
 import type { Candle, Interval, MarketCode } from "@/types/market.types";
 import type { IndicatorSettings } from "./indicator-settings";
+
+export interface LiveTick {
+  price: number;
+  /** epoch ms */
+  ts: number;
+  /** 당일 누적 거래량 — 직전 값과의 차이를 현재 봉 거래량에 더한다 */
+  accTradeVolume: number | null;
+}
 
 export interface PriceLineSpec {
   price: number;
@@ -42,8 +50,8 @@ interface Props {
   indicators: IndicatorSettings;
   priceLines?: PriceLineSpec[];
   markers?: SeriesMarker<Time>[];
-  /** 실시간 봉 구독 (코인). 콜백은 React 렌더를 거치지 않고 차트에 직접 반영된다 */
-  subscribeLive?: (onBar: (bar: Candle) => void) => () => void;
+  /** 실시간 체결 구독 (코인). 콜백은 React 렌더를 거치지 않고 현재 봉에 직접 반영된다 */
+  subscribeTicks?: (onTick: (t: LiveTick) => void) => () => void;
   height?: number;
 }
 
@@ -66,7 +74,7 @@ export function PriceChart({
   indicators,
   priceLines = [],
   markers,
-  subscribeLive,
+  subscribeTicks,
   height = 520,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -279,20 +287,32 @@ export function PriceChart({
     markersRef.current.setMarkers(markers ?? []);
   }, [markers]);
 
-  // 7) 실시간 봉 (코인)
+  // 7) 실시간 체결 → 현재 봉 갱신 (코인). 서버 캔들이 새로 오면 그 마지막 봉부터 다시 쌓는다.
   useEffect(() => {
-    if (!subscribeLive) return;
-    return subscribeLive((bar) => {
+    if (!subscribeTicks) return;
+    let live: Candle | undefined;
+    let liveBase: Candle[] | undefined;
+    let prevAcc: number | null = null;
+    return subscribeTicks((t) => {
       const cs = candleRef.current;
       const vs = volumeRef.current;
-      if (!cs || !vs) return;
-      const last = prevRef.current.candles[prevRef.current.candles.length - 1];
-      if (last && bar.time < last.time) return; // 서버 캔들보다 과거 tick 은 무시
+      const server = prevRef.current.candles;
+      if (!cs || !vs || server.length === 0) return;
+      if (liveBase !== server) {
+        // 서버 캔들이 갱신됨 → 서버 값을 기준으로 재시작
+        liveBase = server;
+        live = server[server.length - 1];
+      }
+      const volumeDelta = prevAcc != null && t.accTradeVolume != null && t.accTradeVolume >= prevAcc ? t.accTradeVolume - prevAcc : 0;
+      prevAcc = t.accTradeVolume;
+      const bar = applyTick(live, t.price, t.ts, interval, volumeDelta);
+      if (live && bar.time < live.time) return; // 서버 봉보다 과거 tick 은 무시
+      live = bar;
       const c = chartPalette(isDark);
       cs.update({ time: toTime(bar.time), open: bar.open, high: bar.high, low: bar.low, close: bar.close });
       vs.update({ time: toTime(bar.time), value: bar.volume, color: bar.close >= bar.open ? `${c.up}66` : `${c.down}66` });
     });
-  }, [subscribeLive, isDark]);
+  }, [subscribeTicks, interval, isDark]);
 
   const shown = legend ?? (candles.length ? candles[candles.length - 1] : null);
   const up = shown ? shown.close >= shown.open : true;

@@ -124,6 +124,18 @@ services:
     networks:
       - tbill-network
 
+  # Upbit 실시간 시세 → Redis pub/sub. 반드시 1개만 실행 (중복 시 tick 이중 발행)
+  py-stream:
+    build: ./backend-python
+    container_name: tbill-py-stream
+    profiles: ["app"]
+    command: ["python", "-m", "app.stream.main"]
+    environment: *py-env
+    depends_on:
+      - redis
+    networks:
+      - tbill-network
+
 volumes:
   postgres_data:
   zookeeper_data:

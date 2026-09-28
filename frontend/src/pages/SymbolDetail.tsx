@@ -1,8 +1,9 @@
+import { useCallback, useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChartToolbar } from "@/components/chart/ChartToolbar";
-import { PriceChart } from "@/components/chart/PriceChart";
+import { PriceChart, type LiveTick } from "@/components/chart/PriceChart";
 import { DEFAULT_INDICATORS, type IndicatorSettings } from "@/components/chart/indicator-settings";
 import { FundamentalsCard } from "@/components/market/FundamentalsCard";
 import { QuoteHeader } from "@/components/market/QuoteHeader";
@@ -14,7 +15,8 @@ import {
   useGetSymbolQuery,
 } from "@/api/market.api";
 import { usePersistentState } from "@/hooks/usePersistentState";
-import { isIntraday, parseMarketParam, SUPPORTED_INTERVALS } from "@/lib/market";
+import { subscribeTicks, useOnRealtimeReconnect, useRealtimeStatus, useRealtimeSymbols, useTick } from "@/hooks/useRealtime";
+import { isIntraday, parseMarketParam, quoteKey, SUPPORTED_INTERVALS } from "@/lib/market";
 import { NotFound } from "./NotFound";
 import type { Interval, MarketCode } from "@/types/market.types";
 
@@ -26,22 +28,44 @@ function SymbolDetailContent({ market, code }: { market: MarketCode; code: strin
   const [indicators, setIndicators] = usePersistentState<IndicatorSettings>("chart.indicators", DEFAULT_INDICATORS);
 
   const { data: overview } = useGetOverviewQuery();
-  const open = market === "CRYPTO" || overview?.marketStatus[market] === "OPEN";
   const isStock = market !== "CRYPTO";
+  const open = !isStock || overview?.marketStatus[market] === "OPEN";
+
+  // 코인은 SSE 실시간, 주식은 장중 주기 폴링
+  const key = quoteKey(market, code);
+  useRealtimeSymbols(isStock ? [] : [key]);
+  const tick = useTick(isStock ? undefined : key);
+  const realtimeOpen = useRealtimeStatus() === "open";
+  const live = !isStock && realtimeOpen;
 
   const symbolQuery = useGetSymbolQuery({ market, code });
   const quoteQuery = useGetQuoteQuery(
     { market, symbol: code },
-    { pollingInterval: market === "CRYPTO" ? 5_000 : open ? 20_000 : 0, skipPollingIfUnfocused: true }
+    { pollingInterval: live ? 0 : !isStock ? 5_000 : open ? 20_000 : 0, skipPollingIfUnfocused: true }
   );
   const candleQuery = useGetCandlesQuery(
     { market, symbol: code, interval },
     {
-      // 분봉은 짧게, 일봉 이상은 장중에만 1분 주기로 갱신
-      pollingInterval: !open ? 0 : isIntraday(interval) ? (market === "CRYPTO" ? 10_000 : 30_000) : 60_000,
+      // 실시간 봉이 흐르는 동안에도 1분마다 서버 캔들로 보정(보조지표 재계산 포함)
+      pollingInterval: !open ? 0 : isIntraday(interval) ? (isStock ? 30_000 : 60_000) : 60_000,
       skipPollingIfUnfocused: true,
     }
   );
+  // 재연결되면 끊긴 동안의 봉을 다시 받는다
+  const { refetch: refetchCandles } = candleQuery;
+  useOnRealtimeReconnect(useCallback(() => void refetchCandles(), [refetchCandles]));
+
+  // 주·월봉은 봉 경계가 거래소 기준과 달라 실시간 반영하지 않는다
+  const liveBars = !isStock && !["1w", "1M"].includes(interval);
+  const chartTicks = useMemo(
+    () =>
+      liveBars
+        ? (onTick: (t: LiveTick) => void) =>
+            subscribeTicks(key, (q) => onTick({ price: q.price, ts: q.ts, accTradeVolume: q.accTradeVolume }))
+        : undefined,
+    [liveBars, key]
+  );
+  const quote = tick ? { ...tick, name: tick.name ?? quoteQuery.data?.name ?? null } : quoteQuery.data;
   const fundamentalsQuery = useGetFundamentalsQuery({ market, symbol: code }, { skip: !isStock });
 
   if (symbolQuery.error && "status" in symbolQuery.error && symbolQuery.error.status === 404) {
@@ -52,7 +76,7 @@ function SymbolDetailContent({ market, code }: { market: MarketCode; code: strin
 
   return (
     <div className="space-y-4">
-      {symbol ? <QuoteHeader symbol={symbol} quote={quoteQuery.data} /> : <Skeleton className="h-16 w-full" />}
+      {symbol ? <QuoteHeader symbol={symbol} quote={quote} /> : <Skeleton className="h-16 w-full" />}
 
       <div className="grid gap-4 lg:grid-cols-12">
         <Card className={isStock ? "lg:col-span-8" : "lg:col-span-12"}>
@@ -76,6 +100,7 @@ function SymbolDetailContent({ market, code }: { market: MarketCode; code: strin
                 dataKey={`${market}:${code}:${interval}`}
                 precision={symbol?.pricePrecision}
                 indicators={indicators}
+                subscribeTicks={chartTicks}
               />
             ) : (
               <Skeleton className="h-[520px] w-full" />

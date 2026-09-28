@@ -8,6 +8,7 @@ import { Bell, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { headerTitleFor } from "./nav-items"
 import { ThemeToggle } from "./ThemeToggle"
+import { RealtimeStatusBadge } from "./RealtimeStatusBadge"
 import { SymbolSearchDialog } from "@/components/market/SymbolSearchDialog"
 
 export function MainLayout() {
@@ -45,6 +46,7 @@ export function MainLayout() {
             </div>
 
             <div className="flex items-center gap-2">
+              <RealtimeStatusBadge />
               <Button variant="outline" size="sm" className="gap-2 text-muted-foreground" onClick={() => setSearchOpen(true)}>
                 <Search className="h-4 w-4" />
                 <span className="hidden md:inline">종목 검색</span>

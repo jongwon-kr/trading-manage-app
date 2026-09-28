@@ -1,7 +1,7 @@
 # backend-python 은 하나의 이미지를 3가지 역할로 실행한다.
 #   backend-python         : 시세 조회 내부 API (uvicorn, 수평 확장 가능)
 #   backend-python-worker  : Kafka 분석 요청 consumer
-#   backend-python-stream  : Upbit 실시간 시세 수집 (반드시 1 replica) — Phase 2 에서 추가
+#   backend-python-stream  : Upbit 실시간 시세 수집 (반드시 1 replica)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -123,3 +123,48 @@ spec:
             limits:
               memory: "2Gi"
               cpu: "1000m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-python-stream
+spec:
+  replicas: 1  # 반드시 1 (중복 실행 시 tick 이중 발행)
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: backend-python-stream
+  template:
+    metadata:
+      labels:
+        app: backend-python-stream
+    spec:
+      containers:
+        - name: backend-python-stream
+          image: your-registry/tbill-backend-python:latest
+          imagePullPolicy: Always
+          command: ["python", "-m", "app.stream.main"]
+          env:
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: REDIS_PORT
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: REDIS_PASSWORD
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"

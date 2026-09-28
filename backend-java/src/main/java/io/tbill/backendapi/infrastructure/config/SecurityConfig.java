@@ -5,6 +5,7 @@ import io.tbill.backendapi.infrastructure.security.handler.JwtAuthenticationEntr
 import io.tbill.backendapi.infrastructure.security.jwt.JwtAuthenticationFilter;
 import io.tbill.backendapi.infrastructure.security.jwt.JwtProvider;
 import io.tbill.backendapi.infrastructure.security.jwt.CookieUtil;
+import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -50,6 +51,9 @@ public class SecurityConfig {
             // Python Service
             "/api/v1/analysis/**",
 
+            // 코인 실시간 시세 SSE (공개 시세만 전송, EventSource 는 Authorization 헤더를 보낼 수 없음)
+            "/api/v1/market/stream",
+
             // Actuator
             "/actuator/**",
     };
@@ -77,6 +81,8 @@ public class SecurityConfig {
                 // 4. API 경로별 권한 설정
                 .authorizeHttpRequests(authz -> authz
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // SSE 등 비동기 응답의 재디스패치·에러 디스패치는 이미 인가된 요청이므로 허용
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                         .requestMatchers(PUBLIC_PATHS).permitAll() // PUBLIC 경로는 모두 허용
                         .anyRequest().authenticated() // 그 외 모든 경로는 인증 필요
                 )

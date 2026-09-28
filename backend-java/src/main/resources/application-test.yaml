@@ -40,6 +40,11 @@ spring:
     producer:
       retries: 0
 
+# 테스트에서는 Redis pub/sub 구독(실시간 시세)을 끈다
+market:
+  stream:
+    enabled: false
+
 python:
   market:
     base-url: http://localhost:8000
