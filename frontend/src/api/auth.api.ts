@@ -10,6 +10,18 @@ import {
 // import { store } from "@/store";
 // import { logoutUser } from "@/store/slices/authSlice";
 
+/**
+ * 백엔드는 AccessToken 을 본문이 아닌 'access' 응답 헤더로 준다 (AuthController, CORS exposedHeaders).
+ * 본문(user, accessTokenExpiresAt)에 헤더의 토큰을 합쳐 AuthResponse 로 만든다.
+ */
+const withAccessToken = (
+  body: AuthResponse,
+  headers: Record<string, unknown>
+): AuthResponse => ({
+  ...body,
+  accessToken: String(headers["access"] ?? ""),
+});
+
 export const authAPI = {
   /**
    * 로그인
@@ -19,7 +31,7 @@ export const authAPI = {
       API_ENDPOINTS.AUTH.LOGIN,
       credentials
     );
-    return response.data;
+    return withAccessToken(response.data, response.headers);
   },
 
   /**
@@ -57,7 +69,7 @@ export const authAPI = {
     const response = await axiosInstance.post<AuthResponse>(
       API_ENDPOINTS.AUTH.REFRESH
     );
-    return response.data;
+    return withAccessToken(response.data, response.headers);
   },
 
   /**

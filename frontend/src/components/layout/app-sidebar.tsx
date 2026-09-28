@@ -12,44 +12,18 @@ import {
 } from "@/components/ui/sidebar"
 import { 
   TrendingUp, 
-  Eye, 
-  BookOpen, 
-  BarChart3, 
   Settings, 
   LogOut,
-  Home,
   RefreshCw, 
   Timer, 
 } from "lucide-react"
+import { NavLink } from "react-router-dom"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { useAppDispatch, useAppSelector } from "@/store/hooks" 
-import { setActivePage, ActivePage } from "@/store/slices/pageSlice" 
 import { logoutUser, refreshSession } from "@/store/slices/authSlice" 
 import { cn } from "@/utils/shadcn-util"
-
-const menuItems = [
-  {
-    title: "대시보드",
-    page: "dashboard" as ActivePage,
-    icon: Home,
-  },
-  {
-    title: "사전 분석",
-    page: "analysis" as ActivePage,
-    icon: Eye,
-  },
-  {
-    title: "매매 일지",
-    page: "journal" as ActivePage,
-    icon: BookOpen,
-  },
-  {
-    title: "성과 분석", 
-    page: "performance" as ActivePage,
-    icon: BarChart3,
-  },
-];
+import { NAV_ITEMS } from "./nav-items"
 
 /**
  * AccessToken 만료 타이머 및 갱신 버튼 컴포넌트
@@ -123,12 +97,7 @@ const TokenExpiryTimer = () => {
 
 export function AppSidebar() {
   const dispatch = useAppDispatch() 
-  const activePage = useAppSelector((state) => state.page.activePage) 
   const user = useAppSelector((state) => state.auth.user); 
-
-  const handlePageChange = (page: ActivePage) => {
-    dispatch(setActivePage(page)) 
-  }
 
   const handleLogout = () => {
     dispatch(logoutUser()); 
@@ -152,19 +121,19 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
+              {NAV_ITEMS.map((item) => (
+                <SidebarMenuItem key={item.path}>
                   <SidebarMenuButton asChild>
-                    <button 
-                      onClick={() => handlePageChange(item.page)} 
-                      className={cn(
+                    <NavLink
+                      to={item.path}
+                      className={({ isActive }) => cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground w-full text-left",
-                        activePage === item.page && "bg-accent text-accent-foreground"
+                        isActive && "bg-accent text-accent-foreground"
                       )}
                     >
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
-                    </button>
+                    </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

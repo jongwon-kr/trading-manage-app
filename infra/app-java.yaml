@@ -82,6 +82,18 @@ spec:
                   name: app-secrets
                   key: JWT_SECRET
             
+            # Python 시세 내부 API
+            - name: PYTHON_MARKET_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: PYTHON_MARKET_BASE_URL
+            - name: PYTHON_INTERNAL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: PYTHON_INTERNAL_TOKEN
+
             # Spring Profile
             - name: SPRING_PROFILES_ACTIVE
               value: "prod"

@@ -2,7 +2,7 @@ import json
 import uuid
 from datetime import datetime
 from confluent_kafka import Producer
-from config import settings
+from app.config import settings
 import logging
 
 logging.basicConfig(level=logging.INFO)

@@ -36,16 +36,22 @@ spring:
       properties:
         spring.json.trusted.packages: "*"
 
-  management:
-    endpoints:
-      web:
-        exposure:
-          include: "health,prometheus"
-    health:
-      readiness-state:
-        enabled: true
-      liveness-state:
-        enabled: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,prometheus"
+  health:
+    readiness-state:
+      enabled: true
+    liveness-state:
+      enabled: true
+
+# Python 시세 내부 API (backend-python app.api.main)
+python:
+  market:
+    base-url: ${PYTHON_MARKET_BASE_URL}
+    internal-token: ${PYTHON_INTERNAL_TOKEN}
 
 jwt:
   secret: ${JWT_SECRET}

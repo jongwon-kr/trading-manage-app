@@ -6,6 +6,7 @@ package io.tbill.backendapi.domain.analysis;
 public enum AnalysisType {
     TECHNICAL,
     MARKET_TREND,
+    STRATEGY,      // 기본적·기술적·시장국면 종합 정량 전략
     NEWS,
     BACKTEST
 }

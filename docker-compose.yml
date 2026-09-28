@@ -56,8 +56,11 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      # 호스트(Java bootRun 등)는 localhost:9092, compose 내부 컨테이너는 kafka:29092 로 접속
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_LOG_RETENTION_HOURS: 168
@@ -83,7 +86,53 @@ services:
     environment:
       DYNAMIC_CONFIG_ENABLED: "true"
       KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092  # 수정
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    networks:
+      - tbill-network
+
+  # --- 애플리케이션 서비스 (선택): docker compose --profile app up -d ---
+  # 로컬 개발 시에는 backend-python 에서 직접 실행해도 된다 (README 참고).
+  py-api:
+    build: ./backend-python
+    container_name: tbill-py-api
+    profiles: ["app"]
+    command: ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment: &py-env
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: 1234
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      INTERNAL_TOKEN: local-dev-token
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    networks:
+      - tbill-network
+
+  py-worker:
+    build: ./backend-python
+    container_name: tbill-py-worker
+    profiles: ["app"]
+    command: ["python", "-m", "app.worker.main"]
+    environment: *py-env
+    depends_on:
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+    networks:
+      - tbill-network
+
+  # Upbit 실시간 시세 → Redis pub/sub. 반드시 1개만 실행 (중복 시 tick 이중 발행)
+  py-stream:
+    build: ./backend-python
+    container_name: tbill-py-stream
+    profiles: ["app"]
+    command: ["python", "-m", "app.stream.main"]
+    environment: *py-env
+    depends_on:
+      - redis
     networks:
       - tbill-network
 

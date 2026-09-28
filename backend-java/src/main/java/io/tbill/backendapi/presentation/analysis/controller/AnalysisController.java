@@ -11,6 +11,7 @@ import io.tbill.backendapi.infrastructure.kafka.dto.AnalysisRequest;
 import io.tbill.backendapi.infrastructure.kafka.service.KafkaProducerService;
 import io.tbill.backendapi.infrastructure.redis.service.AnalysisResultCacheService;
 import io.tbill.backendapi.presentation.analysis.dto.AnalysisApiDto; // 1번 DTO 임포트
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -96,6 +97,61 @@ public class AnalysisController {
                 .body(new AnalysisApiDto.RequestIdResponse(requestId, "시장 트렌드 분석 요청이 접수되었습니다."));
     }
 
+
+    @Operation(summary = "정량 전략 분석 요청",
+            description = "기본적·기술적·시장국면 지표를 종합한 0~100 점수, 신호, ATR 기반 진입/손절/목표가를 계산합니다.")
+    @PostMapping("/strategy")
+    public ResponseEntity<AnalysisApiDto.RequestIdResponse> requestStrategyAnalysis(
+            @Valid @RequestBody AnalysisApiDto.StrategyRequest request
+    ) throws JsonProcessingException {
+        String requestId = UUID.randomUUID().toString();
+
+        AnalysisRequest kafkaRequest = AnalysisRequest.builder()
+                .requestId(requestId)
+                .userEmail(getSafeUserEmail())
+                .analysisType(AnalysisType.STRATEGY)
+                .symbol(request.symbol().trim())
+                .market(request.market().name())
+                .timeframe(request.toParameters().get("interval").toString())
+                .parameters(objectMapper.writeValueAsString(request.toParameters()))
+                .requestedAt(LocalDateTime.now())
+                .build();
+
+        kafkaProducerService.sendAnalysisRequest(KafkaTopics.STRATEGY_ANALYSIS_REQUEST_TOPIC, kafkaRequest);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new AnalysisApiDto.RequestIdResponse(requestId, "전략 분석 요청이 접수되었습니다."));
+    }
+
+    @Operation(summary = "전략 백테스트 요청",
+            description = "점수 기반 전략(기술적·시장국면)을 과거 일봉에 적용해 수익률·MDD·샤프·승률을 계산합니다. 결과는 24시간 보관.")
+    @PostMapping("/backtest")
+    public ResponseEntity<AnalysisApiDto.RequestIdResponse> requestBacktest(
+            @Valid @RequestBody AnalysisApiDto.BacktestRequest request
+    ) throws JsonProcessingException {
+        if (request.from() != null && request.to() != null && !request.from().isBefore(request.to())) {
+            throw new IllegalArgumentException("시작일은 종료일보다 이전이어야 합니다.");
+        }
+        String requestId = UUID.randomUUID().toString();
+
+        AnalysisRequest kafkaRequest = AnalysisRequest.builder()
+                .requestId(requestId)
+                .userEmail(getSafeUserEmail())
+                .analysisType(AnalysisType.BACKTEST)
+                .symbol(request.symbol().trim())
+                .market(request.market().name())
+                .timeframe("1d")
+                .startDate(request.from() != null ? request.from().atStartOfDay() : null)
+                .endDate(request.to() != null ? request.to().atTime(23, 59, 59) : null)
+                .parameters(objectMapper.writeValueAsString(request.toParameters()))
+                .requestedAt(LocalDateTime.now())
+                .build();
+
+        kafkaProducerService.sendAnalysisRequest(KafkaTopics.BACKTEST_REQUEST_TOPIC, kafkaRequest);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new AnalysisApiDto.RequestIdResponse(requestId, "백테스트 요청이 접수되었습니다."));
+    }
 
     @Operation(summary = "AI 분석 결과 조회", description = "발급받은 requestId로 분석 결과를 폴링(Polling)합니다.")
     @GetMapping("/result/{id}") // [수정] /result/{id} 경로 매핑

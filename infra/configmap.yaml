@@ -16,3 +16,6 @@ data:
   # Kafka 접속 정보 (추가)
   KAFKA_BOOTSTRAP_SERVERS: "kafka-svc:9092"
   KAFKA_CONSUMER_GROUP_ID: "tbill-api-group"
+
+  # Python 시세 내부 API
+  PYTHON_MARKET_BASE_URL: "http://backend-python-svc:8000"

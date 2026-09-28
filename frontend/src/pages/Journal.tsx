@@ -56,6 +56,8 @@ import { DateRange } from "react-day-picker";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import { ko } from "date-fns/locale";
+import { Link } from "react-router-dom";
+import { journalSymbolPath } from "@/lib/market";
 
 // 통계 카드
 const StatsCard = ({
@@ -135,7 +137,15 @@ const JournalCard = ({
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
           <div>
-            <CardTitle className="text-xl font-bold">{journal.symbol}</CardTitle>
+            <CardTitle className="text-xl font-bold">
+              {journalSymbolPath(journal.market, journal.symbol) ? (
+                <Link to={journalSymbolPath(journal.market, journal.symbol)!} className="hover:underline">
+                  {journal.symbol}
+                </Link>
+              ) : (
+                journal.symbol
+              )}
+            </CardTitle>
             <p className="text-sm text-muted-foreground">{journal.market}</p>
           </div>
           <div className="flex items-center gap-2">

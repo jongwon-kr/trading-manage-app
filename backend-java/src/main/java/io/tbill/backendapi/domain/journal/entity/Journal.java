@@ -37,16 +37,17 @@ public class Journal extends BaseTimeEntity {
     @Column(name = "trade_type", nullable = false)
     private TradeType tradeType;
 
-    @Column(name = "quantity", nullable = false)
+    // 암호화폐 소수 수량(예: 0.00012345 BTC)을 담기 위해 scale 10
+    @Column(name = "quantity", nullable = false, precision = 30, scale = 10)
     private BigDecimal quantity;
 
-    @Column(name = "entry_price", nullable = false)
+    @Column(name = "entry_price", nullable = false, precision = 24, scale = 8)
     private BigDecimal entryPrice;
 
-    @Column(name = "stop_loss_price")
+    @Column(name = "stop_loss_price", precision = 24, scale = 8)
     private BigDecimal stopLossPrice;
 
-    @Column(name = "realized_pnl")
+    @Column(name = "realized_pnl", precision = 24, scale = 8)
     private BigDecimal realizedPnL;
 
     @Column(name = "reasoning", columnDefinition = "TEXT")

@@ -116,7 +116,10 @@ axiosInstance.interceptors.response.use(
       error.message ||
       "서버 오류가 발생했습니다.";
 
-    return Promise.reject(new Error(errorMessage));
+    // HTTP 상태를 보존해 호출부가 404(종목 없음) 등을 구분할 수 있게 한다
+    return Promise.reject(
+      Object.assign(new Error(errorMessage), { status: error.response?.status })
+    );
   }
 );
 

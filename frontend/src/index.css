@@ -28,6 +28,10 @@
   --trading-green: 142 76% 36%;
   --trading-red: 0 84.2% 60.2%;
   --chart-grid: 240 4.8% 95.9%;
+
+  /* 등락 색상 (한국식: 상승 빨강 / 하락 파랑). lib/chart-theme.ts 와 값을 맞춘다 */
+  --price-up: 359 76% 56%;
+  --price-down: 220 89% 53%;
 }
 
 .dark {
@@ -55,6 +59,9 @@
   --trading-green: 142 76% 36%;
   --trading-red: 0 62.8% 30.6%;
   --chart-grid: 240 3.7% 15.9%;
+
+  --price-up: 359 85% 66%;
+  --price-down: 218 89% 63%;
 }
 
 @layer base {

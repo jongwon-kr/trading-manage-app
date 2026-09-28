@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAppDispatch } from "@/hooks/reduxHooks";
+import { useAppDispatch } from "@/store/hooks";
 import { registerUser } from "@/store/slices/authSlice";
 import { authAPI } from "@/api/auth.api";
 import { Input } from "@/components/ui/input";
@@ -90,8 +90,8 @@ const Register = () => {
 
   return (
     <div className="flex min-h-[70vh] items-center justify-center">
-      <div className="w-full max-w-md p-6 space-y-6 rounded-lg bg-white shadow">
-        <h1 className="text-2xl font-bold text-center"></h1>
+      <div className="w-full max-w-md p-6 space-y-6 rounded-lg border bg-card text-card-foreground shadow">
+        <h1 className="text-2xl font-bold text-center">회원가입</h1>
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">
             <label htmlFor="username" className="text-sm font-medium">
