@@ -11,6 +11,8 @@ import { LINE_COLORS } from "@/lib/chart-theme";
 import { DEFAULT_INDICATORS, type IndicatorSettings } from "@/components/chart/indicator-settings";
 import { FundamentalsCard } from "@/components/market/FundamentalsCard";
 import { QuoteHeader } from "@/components/market/QuoteHeader";
+import { MyTradesCard } from "@/components/market/MyTradesCard";
+import { WatchlistToggle } from "@/components/market/WatchlistToggle";
 import {
   useGetCandlesQuery,
   useGetFundamentalsQuery,
@@ -96,7 +98,7 @@ function SymbolDetailContent({ market, code }: { market: MarketCode; code: strin
 
   return (
     <div className="space-y-4">
-      {symbol ? <QuoteHeader symbol={symbol} quote={quote} /> : <Skeleton className="h-16 w-full" />}
+      {symbol ? <QuoteHeader symbol={symbol} quote={quote} actions={<WatchlistToggle symbol={symbol} />} /> : <Skeleton className="h-16 w-full" />}
 
       <div className="grid gap-4 lg:grid-cols-12">
         <Card className="lg:col-span-8">
@@ -144,6 +146,7 @@ function SymbolDetailContent({ market, code }: { market: MarketCode; code: strin
               error={fundamentalsQuery.isError}
             />
           )}
+          <MyTradesCard market={market} code={code} />
         </div>
       </div>
 

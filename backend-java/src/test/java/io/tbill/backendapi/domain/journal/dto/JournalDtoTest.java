@@ -35,6 +35,24 @@ class JournalDtoTest {
     }
 
     @Test
+    @DisplayName("이미 청산된 거래는 생성 시 realizedPnL 이 저장되고, 코인 수량 소수점이 유지된다")
+    void createClosedTradeKeepsRealizedPnL() {
+        JournalDto.CreateCommand command = JournalDto.CreateCommand.builder()
+                .authorEmail("test@example.com")
+                .market(MarketType.CRYPTO)
+                .symbol("KRW-BTC")
+                .quantity(new BigDecimal("0.00012345"))
+                .entryPrice(new BigDecimal("112934000"))
+                .realizedPnL(new BigDecimal("-1520.5"))
+                .build();
+
+        Journal journal = command.toEntity();
+
+        assertThat(journal.getRealizedPnL()).isEqualByComparingTo("-1520.5");
+        assertThat(journal.getQuantity()).isEqualByComparingTo("0.00012345");
+    }
+
+    @Test
     @DisplayName("Entity에서 JournalInfo로 변환")
     void entityToJournalInfo() {
         // given

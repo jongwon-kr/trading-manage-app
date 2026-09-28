@@ -76,3 +76,14 @@ export function marketTimeZone(market: MarketCode): string {
 export function quoteKey(market: MarketCode, code: string): string {
   return `${market}:${code}`;
 }
+
+/**
+ * 매매일지 종목 → 종목 상세 경로. 일지는 시장을 STOCK/CRYPTO 로만 구분하므로 코드 형식으로 추정한다.
+ * (6자리 숫자 → 국내주식, 그 외 STOCK → 미국주식, CRYPTO → Upbit KRW 마켓). FOREX/FUTURES 는 null.
+ */
+export function journalSymbolPath(journalMarket: string, symbol: string): string | null {
+  const s = symbol.trim().toUpperCase();
+  if (journalMarket === "STOCK") return symbolPath(/^\d{6}$/.test(s) ? "KR_STOCK" : "US_STOCK", s);
+  if (journalMarket === "CRYPTO") return symbolPath("CRYPTO", s.startsWith("KRW-") ? s : `KRW-${s}`);
+  return null;
+}

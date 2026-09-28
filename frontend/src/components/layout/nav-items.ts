@@ -1,5 +1,5 @@
 import { matchPath } from "react-router-dom";
-import { BarChart3, BookOpen, FlaskConical, Home, LineChart, Target, type LucideIcon } from "lucide-react";
+import { BarChart3, BookOpen, FlaskConical, Home, LineChart, Star, Target, type LucideIcon } from "lucide-react";
 
 export interface NavItem {
   path: string;
@@ -12,6 +12,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { path: "/dashboard", title: "대시보드", subtitle: "시장 요약과 포트폴리오 현황", icon: Home },
   { path: "/market", title: "시장", subtitle: "국내·미국 주식과 암호화폐 시세", icon: LineChart },
+  { path: "/watchlist", title: "관심종목", subtitle: "관심종목 실시간 시세", icon: Star },
   { path: "/analysis", title: "전략 분석", subtitle: "기본적·기술적·시장국면 정량 분석", icon: Target },
   { path: "/backtest", title: "백테스트", subtitle: "점수 기반 전략의 과거 성과 검증", icon: FlaskConical },
   { path: "/journal", title: "매매 일지", subtitle: "거래 기록 및 성과 분석", icon: BookOpen },

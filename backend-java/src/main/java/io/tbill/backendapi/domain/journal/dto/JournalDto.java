@@ -50,6 +50,7 @@ public class JournalDto {
                     .quantity(this.quantity)
                     .entryPrice(this.entryPrice)
                     .stopLossPrice(this.stopLossPrice)
+                    .realizedPnL(this.realizedPnL)
                     .reasoning(this.reasoning)
                     .build();
         }

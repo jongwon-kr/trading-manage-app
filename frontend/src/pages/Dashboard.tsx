@@ -1,163 +1,138 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { 
-  TrendingUp, 
-  BarChart3, 
-  Target,
-  DollarSign,
-  Activity
-} from "lucide-react"
+import { useEffect } from "react";
+import { Link } from "react-router-dom";
+import { ArrowRight, BookOpen, FlaskConical, Target } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { IndexCard } from "@/components/market/IndexCard";
+import { WatchlistTable } from "@/components/market/WatchlistTable";
+import { useGetOverviewQuery } from "@/api/market.api";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { fetchJournalStats } from "@/store/slices/tradingSlice";
+import { changeColorClass, formatNumber } from "@/lib/format";
+import { MARKET_LABELS, MARKETS } from "@/lib/market";
+
+// 대시보드에 보여줄 대표 지수 (overview.indices 의 code)
+const DASHBOARD_INDICES = ["KOSPI", "KOSDAQ", "SPX", "IXIC", "KRW-BTC", "USDKRW"];
+
+function JournalStatsCard() {
+  const dispatch = useAppDispatch();
+  const stats = useAppSelector((s) => s.trading.journalStats);
+  useEffect(() => {
+    dispatch(fetchJournalStats());
+  }, [dispatch]);
+
+  const rows: [string, string, number | null][] = stats
+    ? [
+        ["총 거래", `${stats.totalTrades}건`, null],
+        ["진행 중", `${stats.openTrades}건`, null],
+        ["승률", `${formatNumber(stats.winRate, 1)}%`, null],
+        ["누적 실현손익", formatNumber(stats.totalPnL, 0), stats.totalPnL],
+      ]
+    : [];
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-base">매매 일지 요약</CardTitle>
+        <Button asChild variant="ghost" size="sm" className="gap-1">
+          <Link to="/journal">
+            일지 <ArrowRight className="h-4 w-4" />
+          </Link>
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {stats ? (
+          <dl className="grid grid-cols-2 gap-3 text-sm">
+            {rows.map(([k, v, c]) => (
+              <div key={k}>
+                <dt className="text-muted-foreground">{k}</dt>
+                <dd className={`text-lg font-semibold tabular-nums ${c != null ? changeColorClass(c) : ""}`}>{v}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : (
+          <Skeleton className="h-24 w-full" />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export function Dashboard() {
-  const metrics = {
-    totalReturn: 12.5,
-    todayPnL: 2.3,
-    winRate: 68.3,
-    totalTrades: 42,
-    portfolioValue: 125000,
-    monthlyTarget: 75,
-  }
+  const { data: overview, isLoading } = useGetOverviewQuery(undefined, {
+    pollingInterval: 60_000,
+    skipPollingIfUnfocused: true,
+  });
+  const indices = (overview?.indices ?? []).filter((q) => DASHBOARD_INDICES.includes(q.code));
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">트레이딩 대시보드</h2>
-          <p className="text-muted-foreground">
-            오늘의 시장 상황과 포트폴리오 현황을 확인하세요
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-green-600">
-            • 시장 개장
-          </Badge>
-          <Badge variant="secondary">
-            마지막 업데이트: 방금 전
-          </Badge>
-        </div>
-      </div>
-      
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">포트폴리오 가치</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${metrics.portfolioValue.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">+{metrics.totalReturn}%</span> 전체 수익률
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">오늘 수익</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              +{metrics.todayPnL}%
-            </div>
-            <p className="text-xs text-muted-foreground">
-              전일 대비 상승
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">승률</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.winRate}%</div>
-            <div className="mt-2">
-              <Progress value={metrics.winRate} className="h-2" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">총 거래 수</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.totalTrades}</div>
-            <p className="text-xs text-muted-foreground">
-              이번 달 기준
-            </p>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+        {isLoading && Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[104px]" />)}
+        {indices.map((q) => <IndexCard key={q.key} quote={q} />)}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              포트폴리오 성과
-            </CardTitle>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-base">관심종목</CardTitle>
+            <Button asChild variant="ghost" size="sm" className="gap-1">
+              <Link to="/watchlist">
+                전체 보기 <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">월간 목표 달성</span>
-                <span className="text-sm font-medium">{metrics.monthlyTarget}%</span>
-              </div>
-              <Progress value={metrics.monthlyTarget} className="h-3" />
-              
-              <div className="grid grid-cols-2 gap-4 pt-4">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">평균 수익</p>
-                  <p className="text-2xl font-bold text-green-600">+4.2%</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">평균 손실</p>
-                  <p className="text-2xl font-bold text-red-600">-2.1%</p>
-                </div>
-              </div>
-            </div>
+          <CardContent className="px-2">
+            <WatchlistTable limit={10} readOnly />
           </CardContent>
         </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>최근 거래</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+
+        <div className="space-y-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">시장 국면</CardTitle>
+              <p className="text-xs text-muted-foreground">지수 추세·변동성·시장 폭/심리를 종합한 0~100 점수</p>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {MARKETS.map((m) => {
+                const r = overview?.regime?.[m];
+                return (
+                  <div key={m} className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{MARKET_LABELS[m]}</span>
+                    {r ? (
+                      <span className={`font-semibold tabular-nums ${changeColorClass(r.score - 50)}`}>
+                        {r.score.toFixed(0)} <span className="font-normal text-muted-foreground">{r.label}</span>
+                      </span>
+                    ) : (
+                      <Skeleton className="h-5 w-20" />
+                    )}
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+          <JournalStatsCard />
+          <Card>
+            <CardContent className="grid grid-cols-3 gap-2 p-3">
               {[
-                { symbol: 'AAPL', change: '+2.1%', time: '10:30' },
-                { symbol: 'TSLA', change: '-1.5%', time: '09:45' },
-                { symbol: 'MSFT', change: '+0.8%', time: '09:15' },
-              ].map((trade, i) => (
-                <div key={i} className="flex items-center justify-between py-1">
-                  <div className="flex items-center gap-2">
-                    <div className={`h-2 w-2 rounded-full ${
-                      trade.change.startsWith('+') ? 'bg-green-500' : 'bg-red-500'
-                    }`} />
-                    <span className="font-medium">{trade.symbol}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className={`text-sm font-medium ${
-                      trade.change.startsWith('+') ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {trade.change}
-                    </span>
-                    <p className="text-xs text-muted-foreground">{trade.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                ["/analysis", "전략 분석", Target],
+                ["/backtest", "백테스트", FlaskConical],
+                ["/journal", "매매 일지", BookOpen],
+              ].map(([to, label, Icon]) => {
+                const I = Icon as typeof Target;
+                return (
+                  <Button key={to as string} asChild variant="outline" className="h-16 flex-col gap-1">
+                    <Link to={to as string}>
+                      <I className="h-4 w-4" />
+                      <span className="text-xs">{label as string}</span>
+                    </Link>
+                  </Button>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
-  )
+  );
 }

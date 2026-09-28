@@ -32,6 +32,11 @@ export const API_ENDPOINTS = {
     OVERVIEW: "/v1/market/overview",
     MOVERS: "/v1/market/movers",
   },
+  WATCHLIST: {
+    BASE: "/v1/watchlist",
+    ITEMS: "/v1/watchlist/items",
+    ITEM: (id: number) => `/v1/watchlist/items/${id}`,
+  },
   ANALYSIS: {
     STRATEGY: "/v1/analysis/strategy",
     BACKTEST: "/v1/analysis/backtest",
