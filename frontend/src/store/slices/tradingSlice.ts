@@ -1,5 +1,4 @@
 import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
-import { MarketData, PreMarketAnalysis } from "@/types/analysis";
 import {
   JournalApiDto,
 } from "@/types/journal.types";
@@ -16,16 +15,9 @@ import { toast } from "sonner";
 import { RootState } from "@/store";
 
 interface TradingState {
-  marketData: MarketData[];
-  preMarketAnalysis: PreMarketAnalysis | null;
-  watchlist: string[];
-  selectedStock: string | null;
-  isLoading: boolean;
   isJournalLoading: boolean;
   isStatsLoading: boolean;
   isDetailLoading: boolean; // 상세 로딩
-  lastUpdate: string | null;
-
   journals: JournalApiDto.PagedJournalResponse; // 타입 수정
   journalStats: JournalApiDto.StatisticsResponse | null; // 타입 수정
   selectedJournalDetail: JournalApiDto.JournalResponse | null; // 상세 데이터
@@ -51,16 +43,9 @@ const initialJournalPaging: JournalApiDto.PagedJournalResponse = {
 };
 
 const initialState: TradingState = {
-  marketData: [],
-  preMarketAnalysis: null,
-  watchlist: [],
-  selectedStock: null,
-  isLoading: false,
   isJournalLoading: false,
   isStatsLoading: false,
   isDetailLoading: false, // 초기값
-  lastUpdate: null,
-
   journals: initialJournalPaging,
   journalStats: null,
   selectedJournalDetail: null, // 초기값
@@ -175,42 +160,6 @@ const tradingSlice = createSlice({
   name: "trading",
   initialState,
   reducers: {
-    setMarketData: (state, action: PayloadAction<MarketData[]>) => {
-      state.marketData = action.payload;
-      state.lastUpdate = new Date().toISOString();
-    },
-    setPreMarketAnalysis: (state, action: PayloadAction<PreMarketAnalysis>) => {
-      state.preMarketAnalysis = action.payload;
-      state.lastUpdate = new Date().toISOString();
-    },
-    addToWatchlist: (state, action: PayloadAction<string>) => {
-      if (!state.watchlist.includes(action.payload)) {
-        state.watchlist.push(action.payload);
-      }
-    },
-    removeFromWatchlist: (state, action: PayloadAction<string>) => {
-      state.watchlist = state.watchlist.filter(
-        (symbol) => symbol !== action.payload
-      );
-    },
-    setSelectedStock: (state, action: PayloadAction<string | null>) => {
-      state.selectedStock = action.payload;
-    },
-    setLoading: (state, action: PayloadAction<boolean>) => {
-      state.isLoading = action.payload;
-    },
-    updateStockPrice: (
-      _state,
-      _action: PayloadAction<{
-        symbol: string;
-        price: number;
-        change: number;
-        changePercent: number;
-      }>
-    ) => {
-        // 실시간 업데이트 로직 (필요시 구현)
-    },
-
     setJournalFilters: (
       state,
       action: PayloadAction<Partial<JournalApiDto.JournalFilters>>
@@ -367,13 +316,6 @@ const tradingSlice = createSlice({
 });
 
 export const {
-  setMarketData,
-  setPreMarketAnalysis,
-  addToWatchlist,
-  removeFromWatchlist,
-  setSelectedStock,
-  setLoading,
-  updateStockPrice,
   setJournalFilters,
   clearSelectedJournal,
   setPerformanceMetrics,

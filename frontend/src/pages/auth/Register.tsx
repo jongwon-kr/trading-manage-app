@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAppDispatch } from "@/hooks/reduxHooks";
+import { useAppDispatch } from "@/store/hooks";
 import { registerUser } from "@/store/slices/authSlice";
 import { authAPI } from "@/api/auth.api";
 import { Input } from "@/components/ui/input";

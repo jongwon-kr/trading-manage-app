@@ -19,6 +19,8 @@ FROM nginx:1.25-alpine
 # React Vite의 기본 빌드 출력 폴더는 'dist' 입니다.
 # 빌드 스테이지에서 생성된 'dist' 폴더를 Nginx의 웹 루트로 복사
 COPY --from=BUILD /app/dist /usr/share/nginx/html
+# SPA 라우팅(딥링크 새로고침) 설정
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # 80번 포트 개방
 EXPOSE 80

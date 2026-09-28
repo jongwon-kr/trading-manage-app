@@ -21,6 +21,17 @@ export const API_ENDPOINTS = {
     CLOSED: "/journals/closed",
     SEARCH: "/journals/search",
   },
+  MARKET: {
+    SEARCH: "/v1/market/symbols/search",
+    SYMBOL: (market: string, code: string) =>
+      `/v1/market/symbols/${market}/${encodeURIComponent(code)}`,
+    CANDLES: "/v1/market/candles",
+    QUOTE: "/v1/market/quote",
+    QUOTES: "/v1/market/quotes",
+    FUNDAMENTALS: "/v1/market/fundamentals",
+    OVERVIEW: "/v1/market/overview",
+    MOVERS: "/v1/market/movers",
+  },
   ANALYSIS: {
     TECHNICAL: "/v1/analysis/technical",
     MARKET_TREND: "/v1/analysis/market-trend",

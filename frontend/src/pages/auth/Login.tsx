@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAppDispatch } from '@/hooks/reduxHooks';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAppDispatch } from '@/store/hooks';
 import { loginUser } from '@/store/slices/authSlice';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,9 @@ import { LoginRequest } from '@/types/auth.types';
 const Login = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+  // 로그인 전 접근하려던 페이지(ProtectedRoute 가 state.from 에 저장)로 돌아간다
+  const redirectTo = (location.state as { from?: { pathname: string; search?: string } } | null)?.from;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -23,7 +26,7 @@ const Login = () => {
       const result = await dispatch(loginUser(credentials));
       
       if (loginUser.fulfilled.match(result)) {
-        navigate('/');
+        navigate(redirectTo ? `${redirectTo.pathname}${redirectTo.search ?? ''}` : '/', { replace: true });
       } else {
         setError(result.payload as string);
       }
