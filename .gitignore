@@ -133,6 +133,8 @@ downloads/
 eggs/
 .eggs/
 lib/
+# 프론트엔드 소스 모듈(src/lib)은 Python 빌드 산출물이 아니므로 추적한다
+!frontend/src/lib/
 lib64/
 parts/
 sdist/
