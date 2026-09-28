@@ -42,6 +42,15 @@ INDICES = [
 ]
 OVERVIEW_CRYPTO = ["KRW-BTC", "KRW-ETH"]
 
+# 분석용 지수 일봉: 코드 → (yfinance 티커, FDR 코드)
+INDEX_SOURCES = {
+    "KOSPI": ("^KS11", "KS11"),
+    "KOSDAQ": ("^KQ11", "KQ11"),
+    "SPX": ("^GSPC", "US500"),
+    "IXIC": ("^IXIC", "IXIC"),
+    "VIX": ("^VIX", "VIX"),
+}
+
 
 def parse_key(key: str) -> tuple[Market, str]:
     """'KR_STOCK:005930' → (Market.KR_STOCK, '005930')"""
@@ -152,6 +161,52 @@ class MarketDataService:
         if sym.market == Market.KR_STOCK:
             return f"{sym.code}.KQ" if sym.exchange.startswith("KOSDAQ") else f"{sym.code}.KS"
         return sym.code
+
+    def get_index_daily(self, code: str, limit: int = 500) -> pd.DataFrame:
+        """분석용 지수 일봉 (KOSPI, KOSDAQ, SPX, IXIC, VIX)"""
+        yf_ticker, fdr_code = INDEX_SOURCES[code]
+        start_d = date.today() - timedelta(days=math.ceil(limit * 1.5) + 10)
+
+        def load() -> dict:
+            df, source = first_success([
+                (self.yf, lambda: self.yf.candles(yf_ticker, "1d", _dt(start_d), None)),
+                (self.fdr, lambda: self.fdr.daily_candles(fdr_code, start_d, None)),
+            ], f"지수 {code} 일봉")
+            return {"rows": frame_to_rows(df.tail(limit)), "source": source}
+
+        any_open = is_market_open(Market.KR_STOCK) or is_market_open(Market.US_STOCK)
+        cached = get_or_load(f"mkt:index:{code}:{limit}", 600 if any_open else 21_600, load)
+        return rows_to_frame(cached["rows"])
+
+    def kr_breadth(self) -> float | None:
+        """국내 상승 종목 비율 (KOSPI+KOSDAQ, 당일 스냅샷)"""
+        def load() -> dict:
+            quotes = self._kr_snapshot_quotes()
+            return {"ratio": sum(q.change_rate > 0 for q in quotes) / len(quotes) if quotes else None}
+        try:
+            return get_or_load("mkt:kr:breadth", 120, load)["ratio"]
+        except Exception as e:
+            logger.warning(f"국내 breadth 조회 실패: {e}")
+            return None
+
+    def crypto_breadth(self) -> float | None:
+        """Upbit KRW 마켓 24h 상승 종목 비율 (스트리머 값 우선)"""
+        snap = get_json("regime:crypto:breadth")
+        if snap:
+            return snap.get("advanceRatio")
+        try:
+            quotes = self.upbit.quotes([s.code for s in self.symbols.all(Market.CRYPTO)])
+            return sum(q.change == "RISE" for q in quotes) / len(quotes) if quotes else None
+        except Exception as e:
+            logger.warning(f"코인 breadth 조회 실패: {e}")
+            return None
+
+    def fear_greed(self) -> int | None:
+        try:
+            data = get_or_load("mkt:fng", 3600, lambda: self.macro.fear_greed(1))
+            return data[0]["value"] if data else None
+        except Exception:
+            return None
 
     # ================= 시세 =================
     def get_quote(self, market: Market, code: str) -> Quote:

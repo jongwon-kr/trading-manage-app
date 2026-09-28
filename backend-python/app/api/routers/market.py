@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Query
 
+from app.analysis.jobs import regime_summary
 from app.api.deps import verify_internal_token
 from app.core.errors import BadRequest
 from app.market.models import Market
@@ -70,7 +71,12 @@ def get_fundamentals(market: Market, symbol: str):
 
 @router.get("/overview")
 def get_overview():
-    return get_service().get_overview()
+    data = dict(get_service().get_overview())
+    try:
+        data["regime"] = regime_summary()  # 시장별 국면 점수 (10분 캐시)
+    except Exception:
+        data["regime"] = {}
+    return data
 
 
 @router.get("/movers")

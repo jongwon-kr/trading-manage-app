@@ -100,4 +100,6 @@ export interface MarketOverview {
   fearGreed: { value: number; label: string; ts: number } | null;
   btcDominance: number | null;
   asOf: number;
+  /** 시장별 국면 점수 (0~100) — 전략 모델의 시장 국면 그룹과 같은 계산 */
+  regime?: Partial<Record<MarketCode, { score: number; label: string }>>;
 }

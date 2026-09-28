@@ -7,15 +7,17 @@ import { useSearchSymbolsQuery } from "@/api/market.api";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { MARKET_LABELS, MARKETS, symbolPath } from "@/lib/market";
 import { cn } from "@/utils/shadcn-util";
-import type { MarketCode } from "@/types/market.types";
+import type { MarketCode, SymbolInfo } from "@/types/market.types";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** 지정하면 선택 시 이동하지 않고 콜백만 호출 (전략 분석 종목 선택 등) */
+  onSelect?: (symbol: SymbolInfo) => void;
 }
 
 /** 종목 검색 팔레트 (Ctrl/⌘+K). 검색은 서버에서 하므로 cmdk 자체 필터는 끈다. */
-export function SymbolSearchDialog({ open, onOpenChange }: Props) {
+export function SymbolSearchDialog({ open, onOpenChange, onSelect }: Props) {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [market, setMarket] = useState<MarketCode | undefined>();
@@ -25,10 +27,11 @@ export function SymbolSearchDialog({ open, onOpenChange }: Props) {
     { skip: !debounced || !open }
   );
 
-  const select = (m: MarketCode, code: string) => {
+  const select = (s: SymbolInfo) => {
     onOpenChange(false);
     setQ("");
-    navigate(symbolPath(m, code));
+    if (onSelect) onSelect(s);
+    else navigate(symbolPath(s.market, s.code));
   };
 
   return (
@@ -57,7 +60,7 @@ export function SymbolSearchDialog({ open, onOpenChange }: Props) {
             {data.length > 0 && (
               <CommandGroup heading="종목">
                 {data.map((s) => (
-                  <CommandItem key={`${s.market}:${s.code}`} value={`${s.market}:${s.code}`} onSelect={() => select(s.market, s.code)}>
+                  <CommandItem key={`${s.market}:${s.code}`} value={`${s.market}:${s.code}`} onSelect={() => select(s)}>
                     <div className="flex w-full items-center justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate font-medium">{s.name}</p>

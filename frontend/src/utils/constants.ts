@@ -33,8 +33,8 @@ export const API_ENDPOINTS = {
     MOVERS: "/v1/market/movers",
   },
   ANALYSIS: {
-    TECHNICAL: "/v1/analysis/technical",
-    MARKET_TREND: "/v1/analysis/market-trend",
+    STRATEGY: "/v1/analysis/strategy",
+    BACKTEST: "/v1/analysis/backtest",
     RESULT: (id: string) => `/v1/analysis/result/${id}`,
   },
 };

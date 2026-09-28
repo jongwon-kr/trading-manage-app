@@ -1,194 +1,179 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { Loader2, Play, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  AnalysisType,
-  type TechnicalAnalysisRequestParams,
-  type MarketTrendAnalysisRequestParams,
-  type AnalysisResultData,
-  type AnalysisProcessingResponse,
-  type AnalysisResultResponse,
-} from "@/types/analysis.types";
-import { analysisAPI } from "@/api/analysis.api";
-// import { Loader2 } from "lucide-react"; // [진단] 아이콘 임포트 제거
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PriceChart, type PriceLineSpec } from "@/components/chart/PriceChart";
+import { DEFAULT_INDICATORS } from "@/components/chart/indicator-settings";
+import { StrategyReport } from "@/components/analysis/StrategyReport";
+import { SymbolSearchDialog } from "@/components/market/SymbolSearchDialog";
+import { useGetCandlesQuery, useGetOverviewQuery, useGetSymbolQuery } from "@/api/market.api";
+import { useStrategyJob } from "@/hooks/useStrategyJob";
+import { LINE_COLORS } from "@/lib/chart-theme";
+import { changeColorClass } from "@/lib/format";
+import { MARKET_LABELS, MARKETS, marketSlug, parseMarketParam, symbolPath } from "@/lib/market";
 
-// 폴링 간격 (예: 3초)
-const POLLING_INTERVAL = 3000;
+const RISK_OPTIONS = ["0.005", "0.01", "0.02"];
 
-// Java 응답이 "PROCESSING"인지 확인하는 타입 가드
-function isProcessingResponse(
-  response: AnalysisResultResponse
-): response is AnalysisProcessingResponse {
-  return (response as AnalysisProcessingResponse).status === "PROCESSING";
+function RegimeCards() {
+  const { data } = useGetOverviewQuery(undefined, { pollingInterval: 300_000 });
+  return (
+    <div className="grid gap-3 sm:grid-cols-3">
+      {MARKETS.map((m) => {
+        const r = data?.regime?.[m];
+        return (
+          <Card key={m}>
+            <CardContent className="p-4">
+              <p className="text-sm text-muted-foreground">{MARKET_LABELS[m]} 시장 국면</p>
+              {r ? (
+                <p className={`text-2xl font-semibold tabular-nums ${changeColorClass(r.score - 50)}`}>
+                  {r.score.toFixed(0)}
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">{r.label}</span>
+                </p>
+              ) : (
+                <Skeleton className="mt-1 h-8 w-24" />
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
 }
 
-// Java 응답이 Python의 "AnalysisResultData"인지 확인하는 타입 가드
-function isResultData(
-  response: AnalysisResultResponse
-): response is AnalysisResultData {
-  return (response as AnalysisResultData).status === "SUCCESS" || (response as AnalysisResultData).status === "FAILED";
-}
+export function Analysis() {
+  const [params, setParams] = useSearchParams();
+  const market = parseMarketParam(params.get("market") ?? undefined);
+  const symbol = params.get("symbol");
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [equity, setEquity] = useState("");
+  const [riskPct, setRiskPct] = useState("0.01");
 
-export const Analysis = () => {
-  const [requestId, setRequestId] = useState<string | null>(null);
-  const [status, setStatus] = useState<
-    "IDLE" | "PROCESSING" | "SUCCESS" | "FAILED"
-  >("IDLE");
-  const [resultData, setResultData] = useState<AnalysisResultData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
+  const { data: symbolInfo } = useGetSymbolQuery(
+    market && symbol ? { market, code: symbol } : { market: "KR_STOCK", code: "" },
+    { skip: !market || !symbol }
+  );
+  const { data: candles } = useGetCandlesQuery(
+    { market: market ?? "KR_STOCK", symbol: symbol ?? "", interval: "1d", limit: 250 },
+    { skip: !market || !symbol }
+  );
+  const { run, busy, job } = useStrategyJob(market, symbol, { autoRun: true });
+  const risk = job.result?.risk;
+  const priceLines = useMemo<PriceLineSpec[]>(
+    () =>
+      risk
+        ? [
+            { price: risk.entry, title: "진입", color: LINE_COLORS.entry },
+            { price: risk.stopLoss, title: "손절", color: LINE_COLORS.stop },
+            { price: risk.takeProfit1, title: "목표1", color: LINE_COLORS.target },
+            { price: risk.takeProfit2, title: "목표2", color: LINE_COLORS.target },
+          ]
+        : [],
+    [risk]
+  );
 
-  // --- 3. 폴링(Polling) 로직 ---
-  useEffect(() => {
-    if (status !== "PROCESSING" || !requestId) {
-      return;
-    }
-
-    const intervalId = setInterval(async () => {
-      try {
-        const response = await analysisAPI.fetchResult(requestId);
-
-        if (isResultData(response)) {
-          // Python 결과 (SUCCESS 또는 FAILED)
-          clearInterval(intervalId);
-          if (response.status === "SUCCESS") {
-            setStatus("SUCCESS");
-            setResultData(response);
-            setError(null);
-          } else {
-            // Python 내부 오류
-            setStatus("FAILED");
-            setError(response.error_message || "분석 중 오류가 발생했습니다.");
-            setResultData(null);
-          }
-        } else if (isProcessingResponse(response)) {
-          // Java의 "PROCESSING" 상태
-          setStatus("PROCESSING");
-          setLoadingMessage(response.message); // "분석이 진행 중입니다."
-        }
-        
-      } catch (err) {
-        // API 호출 자체 실패 (404, 500 등)
-        clearInterval(intervalId);
-        setStatus("FAILED");
-        setError("결과를 가져오는 데 실패했습니다.");
-        console.error("Polling error:", err);
-      }
-    }, POLLING_INTERVAL);
-
-    // 컴포넌트 언마운트 시 인터벌 정리
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [status, requestId]);
-
-  // --- 1. 분석 요청 핸들러 ---
-  const handleRequestAnalysis = async (type: AnalysisType) => {
-    // 상태 초기화
-    setStatus("PROCESSING");
-    setRequestId(null);
-    setResultData(null);
-    setError(null);
-    setLoadingMessage("분석 요청 중...");
-
-    try {
-      let response;
-      if (type === AnalysisType.TECHNICAL) {
-        const params: TechnicalAnalysisRequestParams = {
-          symbol: "AAPL", // TODO: 실제 UI에서 입력받기
-          timeframe: "1d",
-          market: "STOCK",
-        };
-        response = await analysisAPI.requestTechnical(params);
-      } else {
-        const params: MarketTrendAnalysisRequestParams = {
-          market: "STOCK", // TODO: 실제 UI에서 입력받기
-        };
-        response = await analysisAPI.requestMarketTrend(params);
-      }
-      
-      setRequestId(response.requestId);
-      setLoadingMessage(response.message); // "분석 요청이 접수되었습니다."
-
-    } catch (err) {
-      setStatus("FAILED");
-      setError("분석 요청에 실패했습니다.");
-      console.error("Request analysis error:", err);
-    }
+  const runWithOptions = () => {
+    const accountEquity = Number(equity.replace(/,/g, ""));
+    void run({ riskPct: Number(riskPct), ...(accountEquity > 0 ? { accountEquity } : {}) });
   };
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold mb-4">AI 분석 서비스 (진단 모드)</h1>
-      
-      <Card className="mb-4">
-        <CardHeader>
-          <CardTitle>분석 요청</CardTitle>
-        </CardHeader>
-        <CardContent className="flex gap-4">
-          <Button
-            onClick={() => handleRequestAnalysis(AnalysisType.TECHNICAL)}
-            disabled={status === "PROCESSING"}
-          >
-            {/* [진단] 아이콘 제거 */}
-            {status === "PROCESSING" && "..."}
-            기술적 분석 (AAPL)
-          </Button>
-          <Button
-            onClick={() => handleRequestAnalysis(AnalysisType.MARKET_TREND)}
-            disabled={status === "PROCESSING"}
-            variant="secondary"
-          >
-            {/* [진단] 아이콘 제거 */}
-            {status === "PROCESSING" && "..."}
-            시장 트렌드 분석 (STOCK)
-          </Button>
-        </CardContent>
-      </Card>
+    <div className="space-y-6">
+      <RegimeCards />
 
       <Card>
-        <CardHeader>
-          <CardTitle>분석 결과</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">종목 전략 분석</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            기술적(추세·모멘텀·변동성·거래량), 기본적(밸류·수익성·성장·건전성·배당), 시장 국면(지수 추세·변동성·심리)을 0~100 점수로
+            종합합니다.
+          </p>
         </CardHeader>
-        <CardContent>
-          {status === "IDLE" && <p>분석을 요청하세요.</p>}
-          
-          {status === "PROCESSING" && (
-            <div className="flex items-center gap-2">
-              {/* [진단] 아이콘을 텍스트로 변경 */}
-              <p className="text-lg font-semibold animate-pulse">(분석 중...)</p>
-              <p className="text-lg">{loadingMessage} (ID: {requestId})</p>
-            </div>
-          )}
-
-          {status === "FAILED" && (
-            <p className="text-red-500">오류: {error}</p>
-          )}
-
-          {status === "SUCCESS" && resultData && (
-            <div>
-              <h3 className="text-xl font-semibold mb-2">
-                [{resultData.analysis_type}] 분석 완료 - 추천: 
-                <span className={
-                  resultData.recommendation === "BUY" ? "text-green-600 ml-2" :
-                  resultData.recommendation === "SELL" ? "text-red-600 ml-2" :
-                  "text-gray-600 ml-2"
-                }>
-                  {resultData.recommendation}
-                </span>
-              </h3>
-              <p className="mb-4 whitespace-pre-wrap bg-gray-100 p-4 rounded-md dark:bg-gray-800 dark:text-gray-200">
-                <strong>요약:</strong> {resultData.summary}
-              </p>
-              
-              <h4 className="font-semibold">Raw 데이터 (JSON)</h4>
-              <pre className="bg-gray-800 text-white p-4 rounded-md overflow-x-auto text-sm">
-                {JSON.stringify(resultData, null, 2)}
-              </pre>
-            </div>
+        <CardContent className="flex flex-wrap items-end gap-4">
+          <div className="space-y-1.5">
+            <Label>종목</Label>
+            <Button variant="outline" className="min-w-[220px] justify-start gap-2" onClick={() => setPickerOpen(true)}>
+              <Search className="h-4 w-4" />
+              {symbolInfo ? `${symbolInfo.name} (${symbolInfo.code})` : "종목 선택"}
+            </Button>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="equity">계좌 금액 (선택)</Label>
+            <Input id="equity" inputMode="numeric" placeholder="예: 10000000" value={equity}
+                   onChange={(e) => setEquity(e.target.value)} className="w-44" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>1회 위험 비율</Label>
+            <Select value={riskPct} onValueChange={setRiskPct}>
+              <SelectTrigger className="w-28">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {RISK_OPTIONS.map((v) => (
+                  <SelectItem key={v} value={v}>
+                    {(Number(v) * 100).toFixed(1)}%
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={runWithOptions} disabled={!market || !symbol || busy} className="gap-2">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+            분석 실행
+          </Button>
+          {market && symbol && (
+            <Button asChild variant="link" className="px-0">
+              <Link to={symbolPath(market, symbol)}>차트 상세 보기</Link>
+            </Button>
           )}
         </CardContent>
       </Card>
+
+      {!market || !symbol ? (
+        <p className="py-10 text-center text-sm text-muted-foreground">분석할 종목을 선택하세요.</p>
+      ) : (
+        <>
+          {job.status === "PROCESSING" && (
+            <p className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> 지표를 계산하는 중…
+            </p>
+          )}
+          {(job.status === "FAILED" || job.status === "TIMEOUT") && <p className="text-sm text-destructive">{job.error}</p>}
+          {job.result && (
+            <>
+              <Card>
+                <CardContent className="p-4">
+                  {candles ? (
+                    <PriceChart
+                      candles={candles.candles}
+                      market={market}
+                      interval="1d"
+                      dataKey={`${market}:${symbol}:analysis`}
+                      precision={symbolInfo?.pricePrecision}
+                      indicators={{ ...DEFAULT_INDICATORS, rsi: false }}
+                      priceLines={priceLines}
+                      height={360}
+                    />
+                  ) : (
+                    <Skeleton className="h-[360px] w-full" />
+                  )}
+                </CardContent>
+              </Card>
+              <StrategyReport result={job.result} />
+            </>
+          )}
+        </>
+      )}
+
+      <SymbolSearchDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onSelect={(s) => setParams({ market: marketSlug(s.market), symbol: s.code })}
+      />
     </div>
   );
-};
+}

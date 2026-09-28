@@ -20,12 +20,14 @@ class Settings(BaseSettings):
 
     # Kafka Topics (backend-java KafkaTopics.java 와 반드시 동기화)
     CHART_ANALYSIS_REQUEST_TOPIC: str = "chart-analysis-request"
+    STRATEGY_ANALYSIS_REQUEST_TOPIC: str = "strategy-analysis-request"
     MARKET_TREND_REQUEST_TOPIC: str = "market-trend-request"
     NEWS_ANALYSIS_REQUEST_TOPIC: str = "news-analysis-request"
     BACKTEST_REQUEST_TOPIC: str = "backtest-request"
 
     # Analysis
     ANALYSIS_RESULT_TTL: int = 3600  # 1시간
+    BACKTEST_RESULT_TTL: int = 86400  # 24시간
 
 
 settings = Settings()

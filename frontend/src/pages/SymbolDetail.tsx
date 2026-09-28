@@ -3,7 +3,11 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChartToolbar } from "@/components/chart/ChartToolbar";
-import { PriceChart, type LiveTick } from "@/components/chart/PriceChart";
+import { PriceChart, type LiveTick, type PriceLineSpec } from "@/components/chart/PriceChart";
+import { StrategyReport } from "@/components/analysis/StrategyReport";
+import { StrategySummaryCard } from "@/components/analysis/StrategySummaryCard";
+import { useStrategyJob } from "@/hooks/useStrategyJob";
+import { LINE_COLORS } from "@/lib/chart-theme";
 import { DEFAULT_INDICATORS, type IndicatorSettings } from "@/components/chart/indicator-settings";
 import { FundamentalsCard } from "@/components/market/FundamentalsCard";
 import { QuoteHeader } from "@/components/market/QuoteHeader";
@@ -66,6 +70,22 @@ function SymbolDetailContent({ market, code }: { market: MarketCode; code: strin
     [liveBars, key]
   );
   const quote = tick ? { ...tick, name: tick.name ?? quoteQuery.data?.name ?? null } : quoteQuery.data;
+
+  // 전략 분석 (페이지 진입 시 자동 1회, 결과는 Python 에서 10분 캐시)
+  const strategy = useStrategyJob(market, code, { autoRun: true });
+  const risk = strategy.job.result?.risk;
+  const priceLines = useMemo<PriceLineSpec[]>(
+    () =>
+      risk
+        ? [
+            { price: risk.entry, title: "진입", color: LINE_COLORS.entry },
+            { price: risk.stopLoss, title: "손절", color: LINE_COLORS.stop },
+            { price: risk.takeProfit1, title: "목표1", color: LINE_COLORS.target },
+            { price: risk.takeProfit2, title: "목표2", color: LINE_COLORS.target },
+          ]
+        : [],
+    [risk]
+  );
   const fundamentalsQuery = useGetFundamentalsQuery({ market, symbol: code }, { skip: !isStock });
 
   if (symbolQuery.error && "status" in symbolQuery.error && symbolQuery.error.status === 404) {
@@ -79,7 +99,7 @@ function SymbolDetailContent({ market, code }: { market: MarketCode; code: strin
       {symbol ? <QuoteHeader symbol={symbol} quote={quote} /> : <Skeleton className="h-16 w-full" />}
 
       <div className="grid gap-4 lg:grid-cols-12">
-        <Card className={isStock ? "lg:col-span-8" : "lg:col-span-12"}>
+        <Card className="lg:col-span-8">
           <CardContent className="space-y-3 p-4">
             <ChartToolbar
               intervals={intervals}
@@ -101,6 +121,7 @@ function SymbolDetailContent({ market, code }: { market: MarketCode; code: strin
                 precision={symbol?.pricePrecision}
                 indicators={indicators}
                 subscribeTicks={chartTicks}
+                priceLines={priceLines}
               />
             ) : (
               <Skeleton className="h-[520px] w-full" />
@@ -114,16 +135,24 @@ function SymbolDetailContent({ market, code }: { market: MarketCode; code: strin
           </CardContent>
         </Card>
 
-        {isStock && (
-          <div className="space-y-4 lg:col-span-4">
+        <div className="space-y-4 lg:col-span-4">
+          <StrategySummaryCard job={strategy.job} busy={strategy.busy} onRun={() => void strategy.run()} />
+          {isStock && (
             <FundamentalsCard
               data={fundamentalsQuery.data}
               loading={fundamentalsQuery.isLoading}
               error={fundamentalsQuery.isError}
             />
-          </div>
-        )}
+          )}
+        </div>
       </div>
+
+      {strategy.job.result && (
+        <section id="strategy-report" className="scroll-mt-4 space-y-2">
+          <h3 className="text-lg font-semibold">전략 분석 리포트</h3>
+          <StrategyReport result={strategy.job.result} />
+        </section>
+      )}
     </div>
   );
 }

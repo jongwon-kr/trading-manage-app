@@ -1,68 +1,62 @@
-Write-Host "=== Java-Python Integration Test ===" -ForegroundColor Green
+﻿Write-Host "=== Java-Python Integration Test ===" -ForegroundColor Green
 
-# 1. Python check
-Write-Host "`n[1/7] Python server..." -ForegroundColor Cyan
-$pythonResponse = Invoke-RestMethod -Uri "http://localhost:8000/"
-Write-Host "  OK: $($pythonResponse.status)" -ForegroundColor Green
-Write-Host "  Consumer: $($pythonResponse.consumer_status)" -ForegroundColor Green
+# Windows PowerShell 5.1 은 charset 없는 application/json 을 ISO-8859-1 로 읽어 한글이 깨진다 → UTF-8 로 직접 디코딩
+function Get-Json([string]$Uri) {
+    $res = Invoke-WebRequest -Uri $Uri -UseBasicParsing
+    return [Text.Encoding]::UTF8.GetString($res.RawContentStream.ToArray()) | ConvertFrom-Json
+}
+
+# 1. Python check (시세 API + 스트리머 상태)
+Write-Host "`n[1/5] Python market API..." -ForegroundColor Cyan
+$pythonHealth = Invoke-RestMethod -Uri "http://localhost:8000/health"
+Write-Host "  Status: $($pythonHealth.status), Redis: $($pythonHealth.redis), Streamer: $($pythonHealth.streamerAlive)" -ForegroundColor Green
 
 # 2. Java check
-Write-Host "`n[2/7] Java server..." -ForegroundColor Cyan
+Write-Host "`n[2/5] Java server..." -ForegroundColor Cyan
 $javaHealth = Invoke-RestMethod -Uri "http://localhost:8080/actuator/health"
 Write-Host "  OK: $($javaHealth.status)" -ForegroundColor Green
 
 # 3. Docker check
-Write-Host "`n[3/7] Docker containers..." -ForegroundColor Cyan
+Write-Host "`n[3/5] Docker containers..." -ForegroundColor Cyan
 docker ps --format "{{.Names}}" | Select-String "tbill"
 
-# 4. Analysis request
-Write-Host "`n[4/7] Request analysis (TSLA)..." -ForegroundColor Cyan
-$uri = "http://localhost:8080/api/analysis/technical?symbol=TSLA&market=STOCK&timeframe=1d"
-$response = Invoke-RestMethod -Uri $uri -Method Post
+# 4. Strategy analysis request (Java → Kafka → Python worker → Redis)
+Write-Host "`n[4/5] Request strategy analysis (US_STOCK:AAPL)..." -ForegroundColor Cyan
+$body = @{ market = "US_STOCK"; symbol = "AAPL" } | ConvertTo-Json
+$response = Invoke-RestMethod -Uri "http://localhost:8080/api/v1/analysis/strategy" -Method Post -ContentType "application/json" -Body $body
 $requestId = $response.requestId
 Write-Host "  Request ID: $requestId" -ForegroundColor Yellow
 
-# 5. Python log check info
-Write-Host "`n[5/7] Check Python terminal for logs:" -ForegroundColor Cyan
-Write-Host "  - Message received: topic=chart-analysis-request" -ForegroundColor Gray
-Write-Host "  - Analysis started: symbol=TSLA" -ForegroundColor Gray
-
-# 6. Wait
-Write-Host "`n[6/7] Waiting 15 seconds..." -ForegroundColor Cyan
-Start-Sleep -Seconds 15
-Write-Host "  Done" -ForegroundColor Green
-
-# 7. Get result
-Write-Host "`n[7/7] Get result..." -ForegroundColor Cyan
-$resultUri = "http://localhost:8080/api/analysis/result/$requestId"
-$result = Invoke-RestMethod -Uri $resultUri
+# 5. Poll result (최대 60초)
+Write-Host "`n[5/5] Polling result..." -ForegroundColor Cyan
+$resultUri = "http://localhost:8080/api/v1/analysis/result/$requestId"
+$result = $null
+for ($i = 0; $i -lt 60; $i++) {
+    $result = Get-Json $resultUri
+    if ($result.status -eq "SUCCESS" -or $result.status -eq "FAILED") { break }
+    Start-Sleep -Seconds 1
+}
 
 if ($result.status -eq "SUCCESS") {
     Write-Host "`n=== TEST SUCCESS ===" -ForegroundColor Green
-    Write-Host "Symbol      : $($result.symbol)" -ForegroundColor White
-    Write-Host "Recommendation : $($result.recommendation)" -ForegroundColor Yellow
-    Write-Host "Confidence  : $([math]::Round($result.confidence * 100, 1))%" -ForegroundColor Cyan
-    
-    if ($result.indicators) {
-        Write-Host "`nIndicators:" -ForegroundColor White
-        Write-Host "  RSI  : $([math]::Round($result.indicators.rsi, 2))" -ForegroundColor Gray
-        Write-Host "  MACD : $([math]::Round($result.indicators.macd.macd, 2))" -ForegroundColor Gray
-        Write-Host "  Price: $([math]::Round($result.indicators.moving_averages.current_price, 2))" -ForegroundColor Gray
+    Write-Host "Symbol     : $($result.name) ($($result.symbol))" -ForegroundColor White
+    Write-Host "Score      : $($result.score) / 100  ($($result.strength))" -ForegroundColor Yellow
+    Write-Host "Confidence : $([math]::Round($result.confidence * 100, 1))%" -ForegroundColor Cyan
+    foreach ($g in $result.groups) {
+        Write-Host ("  {0,-8} score={1} weight={2}" -f $g.label, $g.score, $g.effectiveWeight) -ForegroundColor Gray
     }
-    
+    Write-Host "Entry/Stop/Target: $($result.risk.entry) / $($result.risk.stopLoss) / $($result.risk.takeProfit2)" -ForegroundColor Gray
     Write-Host "`nSummary:" -ForegroundColor White
     Write-Host $result.summary -ForegroundColor Gray
-    
-} elseif ($result.status -eq "PROCESSING") {
-    Write-Host "`n=== STILL PROCESSING ===" -ForegroundColor Yellow
-    Write-Host "Python Consumer did NOT receive the message!" -ForegroundColor Red
-    Write-Host "`nTroubleshooting:" -ForegroundColor Yellow
-    Write-Host "1. Check Python terminal for 'message received' log" -ForegroundColor White
+} elseif ($result.status -eq "FAILED") {
+    Write-Host "`n=== FAILED ===" -ForegroundColor Red
+    Write-Host $result.errorMessage -ForegroundColor Gray
+} else {
+    Write-Host "`n=== STILL PROCESSING ($($result.status)) ===" -ForegroundColor Yellow
+    Write-Host "Python worker did NOT finish in time." -ForegroundColor Red
+    Write-Host "1. Check worker log (python -m app.worker.main)" -ForegroundColor White
     Write-Host "2. Run: python test_kafka.py" -ForegroundColor White
     Write-Host "3. Check: docker logs tbill-kafka" -ForegroundColor White
-} else {
-    Write-Host "`n=== FAILED ===" -ForegroundColor Red
-    Write-Host "Status: $($result.status)" -ForegroundColor Gray
 }
 
 Write-Host "`n=== Test Complete ===" -ForegroundColor Cyan

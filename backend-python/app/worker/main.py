@@ -55,6 +55,7 @@ if __name__ == "__main__":
     # 2. settings.py에 정의된 각 토픽에 대한 Consumer 스레드 생성
     topics = [
         settings.CHART_ANALYSIS_REQUEST_TOPIC,
+        settings.STRATEGY_ANALYSIS_REQUEST_TOPIC,
         settings.MARKET_TREND_REQUEST_TOPIC,
         settings.NEWS_ANALYSIS_REQUEST_TOPIC,
         settings.BACKTEST_REQUEST_TOPIC

@@ -1,147 +1,83 @@
 import json
 import logging
-from datetime import datetime
-from app.analysis.schemas import AnalysisRequest, AnalysisResult, AnalysisType, TechnicalIndicators
-from app.analysis.legacy.technical_analyzer import TechnicalAnalyzer
-from app.analysis.legacy.market_analyzer import MarketAnalyzer  # MarketAnalyzer 임포트
+from datetime import datetime, timezone
+
+from app.analysis.jobs import infer_market, run_market_trend, run_strategy
+from app.analysis.schemas import SCHEMA_VERSION, AnalysisRequest, AnalysisType
 from app.config import settings
+from app.core.errors import BadRequest, MarketDataError
 from app.core.redis_client import get_redis
+from app.market.models import Market
 
 logger = logging.getLogger(__name__)
 
+
 class AnalysisHandler:
-    """분석 요청 처리 핸들러"""
-    
-    def __init__(self):
-        self.technical_analyzer = TechnicalAnalyzer()
-        self.market_analyzer = MarketAnalyzer()  # MarketAnalyzer 초기화
-        logger.info("AnalysisHandler 초기화 완료")
+    """Kafka 분석 요청 → 분석 실행 → Redis analysis:{requestId} 에 결과 기록.
+
+    상태: RUNNING(처리 시작) → SUCCESS | FAILED. Java 는 키가 없으면 PROCESSING 으로 응답한다.
+    어떤 경우에도(요청 파싱 실패 포함) FAILED 를 기록해 클라이언트가 무한 대기하지 않게 한다.
+    """
 
     def handle_analysis_request(self, message: dict):
-        """
-        분석 요청 처리
-        
-        Args:
-            message: Kafka 메시지 (dict)
-        """
-        request_id = message.get("requestId", "unknown")
-        analysis_type = message.get("analysisType", AnalysisType.TECHNICAL)
-
+        request_id = str(message.get("requestId") or "unknown")
+        analysis_type = message.get("analysisType")
         try:
-            # 메시지 파싱
             request = AnalysisRequest(**message)
-            logger.info(f"분석 요청 처리 시작: request_id={request.request_id}, type={request.analysis_type}")
-            
-            # 분석 타입에 따라 처리
-            if request.analysis_type == AnalysisType.TECHNICAL:
-                result = self._handle_technical_analysis(request)
-            elif request.analysis_type == AnalysisType.MARKET_TREND:
-                result = self._handle_market_trend_analysis(request)
-            elif request.analysis_type == AnalysisType.NEWS:
-                result = self._handle_news_analysis(request)
-            elif request.analysis_type == AnalysisType.BACKTEST:
-                result = self._handle_backtest(request)
-            else:
-                raise ValueError(f"지원하지 않는 분석 타입: {request.analysis_type}")
-            
-            # Redis에 결과 저장
-            self._save_result(request.request_id, result.model_dump(mode='json'))
-            
-            logger.info(f"분석 요청 처리 완료: request_id={request.request_id}")
-            
         except Exception as e:
-            logger.error(f"분석 요청 처리 실패: {e}", exc_info=True)
-            
-            # 실패 결과 저장
-            error_result = AnalysisResult(
-                request_id=request_id,
-                analysis_type=analysis_type,
-                status="FAILED",
-                summary="분석 처리 중 오류 발생",
-                recommendation="HOLD",
-                confidence=0.0,
-                analyzed_at=datetime.now(),
-                error_message=str(e)
-            )
-            
-            self._save_result(request_id, error_result.model_dump(mode='json'))
+            logger.warning(f"잘못된 분석 요청: {request_id}: {e}")
+            self._save(request_id, self._envelope(request_id, analysis_type, "FAILED",
+                                                  errorMessage=f"잘못된 분석 요청입니다: {e}"))
+            return
 
-    def _save_result(self, request_id: str, result: dict) -> None:
-        """분석 결과를 Redis analysis:{requestId} 에 저장 (Java AnalysisResultCacheService 가 조회)"""
+        rid, rtype = request.request_id, request.analysis_type.value
+        logger.info(f"분석 요청 처리 시작: request_id={rid}, type={rtype}, symbol={request.symbol}")
+        self._save(rid, self._envelope(rid, rtype, "RUNNING"))
         try:
-            get_redis().set(f"analysis:{request_id}", json.dumps(result), ex=settings.ANALYSIS_RESULT_TTL)
-            logger.info(f"분석 결과 저장 완료: {request_id}")
+            result = self._dispatch(request)
+            self._save(rid, {**self._envelope(rid, rtype, "SUCCESS"), **result})
+            logger.info(f"분석 요청 처리 완료: request_id={rid}")
+        except MarketDataError as e:
+            logger.warning(f"분석 실패: request_id={rid}: {e}")
+            self._save(rid, self._envelope(rid, rtype, "FAILED", errorMessage=str(e)))
+        except Exception as e:
+            logger.error(f"분석 처리 중 오류: request_id={rid}: {e}", exc_info=True)
+            self._save(rid, self._envelope(rid, rtype, "FAILED", errorMessage="분석 처리 중 오류가 발생했습니다."))
+
+    def _dispatch(self, request: AnalysisRequest) -> dict:
+        t = request.analysis_type
+        params = request.params()
+        if t in (AnalysisType.TECHNICAL, AnalysisType.STRATEGY):
+            if not request.symbol:
+                raise BadRequest("종목(symbol)이 필요합니다.")
+            market = infer_market(request.market, request.symbol)
+            params.setdefault("interval", request.timeframe or "1d")
+            include = ("technical",) if t == AnalysisType.TECHNICAL else ("technical", "fundamental", "regime")
+            return run_strategy(market, request.symbol, params, include)
+        if t == AnalysisType.MARKET_TREND:
+            if request.market not in Market.__members__:
+                raise BadRequest(f"시장 코드가 올바르지 않습니다: {request.market} (KR_STOCK | US_STOCK | CRYPTO)")
+            return run_market_trend(Market(request.market))
+        if t == AnalysisType.BACKTEST:
+            from app.analysis.backtest import run_backtest_request  # 백테스트 모듈은 필요할 때만 로드
+            return run_backtest_request(request, params, self._progress(request.request_id))
+        raise BadRequest(f"지원하지 않는 분석 유형입니다: {t.value}")
+
+    def _progress(self, request_id: str):
+        def report(pct: float, message: str = "") -> None:
+            self._save(request_id, self._envelope(request_id, AnalysisType.BACKTEST.value, "RUNNING",
+                                                  progress=round(pct, 2), message=message))
+        return report
+
+    @staticmethod
+    def _envelope(request_id: str, analysis_type, status: str, **extra) -> dict:
+        return {"schemaVersion": SCHEMA_VERSION, "requestId": request_id, "analysisType": analysis_type,
+                "status": status, "analyzedAt": datetime.now(timezone.utc).isoformat(), **extra}
+
+    def _save(self, request_id: str, result: dict) -> None:
+        """분석 결과를 Redis analysis:{requestId} 에 저장 (Java AnalysisResultCacheService 가 조회)"""
+        ttl = settings.BACKTEST_RESULT_TTL if result.get("analysisType") == "BACKTEST" else settings.ANALYSIS_RESULT_TTL
+        try:
+            get_redis().set(f"analysis:{request_id}", json.dumps(result, ensure_ascii=False), ex=ttl)
         except Exception as e:
             logger.error(f"분석 결과 저장 실패: {request_id}, error: {e}")
-
-    def _handle_technical_analysis(self, request: AnalysisRequest) -> AnalysisResult:
-        """기술적 분석 처리"""
-        if not request.symbol:
-            raise ValueError("기술적 분석을 위해서는 'symbol' 필드가 필요합니다.")
-            
-        analysis_data = self.technical_analyzer.analyze(
-            request.symbol,
-            request.timeframe or "1d"
-        )
-        
-        return AnalysisResult(
-            request_id=request.request_id,
-            analysis_type=AnalysisType.TECHNICAL,
-            symbol=request.symbol,
-            status=analysis_data["status"],
-            indicators=TechnicalIndicators(**analysis_data.get("indicators", {})), # 중첩 모델 변환
-            summary=analysis_data["summary"],
-            recommendation=analysis_data["recommendation"],
-            confidence=analysis_data["confidence"],
-            analyzed_at=datetime.fromisoformat(analysis_data.get("analyzed_at", datetime.now().isoformat())),
-            error_message=analysis_data.get("error_message")
-        )
-
-    def _handle_market_trend_analysis(self, request: AnalysisRequest) -> AnalysisResult:
-        """시장 트렌드 분석 처리 (수정됨)"""
-        
-        if not request.market:
-            raise ValueError("시장 트렌드 분석을 위해서는 'market' 필드가 필요합니다.")
-            
-        # 실제 MarketAnalyzer 호출
-        analysis_data = self.market_analyzer.analyze_market_trend(
-            market=request.market
-        )
-        
-        # MarketAnalyzer의 결과(dict)를 AnalysisResult 모델로 변환
-        return AnalysisResult(
-            request_id=request.request_id,
-            analysis_type=AnalysisType.MARKET_TREND,
-            market=request.market,
-            status=analysis_data["status"],
-            summary=analysis_data.get("summary", "분석 요약 없음"),
-            recommendation=analysis_data.get("recommendation", "HOLD"),
-            confidence=analysis_data.get("confidence", 0.5),
-            analyzed_at=datetime.fromisoformat(analysis_data.get("analyzed_at", datetime.now().isoformat())),
-            error_message=analysis_data.get("error_message")
-        )
-
-    def _handle_news_analysis(self, request: AnalysisRequest) -> AnalysisResult:
-        """뉴스/거시경제 분석 처리 (구현 예정)"""
-        return AnalysisResult(
-            request_id=request.request_id,
-            analysis_type=AnalysisType.NEWS,
-            status="SUCCESS",
-            summary="뉴스 분석 (구현 예정)",
-            recommendation="HOLD",
-            confidence=0.5,
-            analyzed_at=datetime.now()
-        )
-
-    def _handle_backtest(self, request: AnalysisRequest) -> AnalysisResult:
-        """백테스팅 처리 (구현 예정)"""
-        return AnalysisResult(
-            request_id=request.request_id,
-            analysis_type=AnalysisType.BACKTEST,
-            symbol=request.symbol,
-            status="SUCCESS",
-            summary="백테스팅 (구현 예정)",
-            recommendation="HOLD",
-            confidence=0.5,
-            analyzed_at=datetime.now()
-        )
