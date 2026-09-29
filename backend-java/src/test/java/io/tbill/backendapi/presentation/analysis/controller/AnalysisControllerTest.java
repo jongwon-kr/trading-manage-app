@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.tbill.backendapi.domain.analysis.AnalysisType;
 import io.tbill.backendapi.domain.market.entity.InstrumentMarket;
+import io.tbill.backendapi.domain.strategy.dto.StrategyPresetDto;
+import io.tbill.backendapi.domain.strategy.service.StrategyPresetService;
 import io.tbill.backendapi.infrastructure.client.python.PythonMarketClient;
 import io.tbill.backendapi.infrastructure.kafka.KafkaTopics;
 import io.tbill.backendapi.infrastructure.kafka.dto.AnalysisRequest;
@@ -37,19 +39,23 @@ class AnalysisControllerTest {
     private AnalysisResultCacheService analysisResultCacheService;
     @Mock
     private PythonMarketClient pythonMarketClient;
+    @Mock
+    private StrategyPresetService strategyPresetService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private AnalysisController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new AnalysisController(kafkaProducerService, analysisResultCacheService, objectMapper, pythonMarketClient);
+        controller = new AnalysisController(kafkaProducerService, analysisResultCacheService, objectMapper, pythonMarketClient,
+                strategyPresetService);
     }
 
     @Test
     @DisplayName("전략 분석 요청은 STRATEGY 토픽으로 옵션(JSON)과 함께 발행된다")
     void requestStrategy() throws Exception {
-        var body = new AnalysisApiDto.StrategyRequest(InstrumentMarket.KR_STOCK, " 005930 ", null, 10_000_000d, 0.02);
+        var body = new AnalysisApiDto.StrategyRequest(InstrumentMarket.KR_STOCK, " 005930 ", null, 10_000_000d, 0.02,
+                null, null);
 
         ResponseEntity<AnalysisApiDto.RequestIdResponse> res = controller.requestStrategyAnalysis(body);
 
@@ -72,7 +78,7 @@ class AnalysisControllerTest {
     void requestBacktest() throws Exception {
         var body = new AnalysisApiDto.BacktestRequest(InstrumentMarket.CRYPTO, "KRW-BTC",
                 java.time.LocalDate.of(2024, 1, 1), java.time.LocalDate.of(2025, 1, 1),
-                65d, null, null, null, null, null, null, null);
+                65d, null, null, null, null, null, null, null, null, null);
 
         controller.requestBacktest(body);
 
@@ -90,9 +96,63 @@ class AnalysisControllerTest {
     void backtestInvalidRange() {
         var body = new AnalysisApiDto.BacktestRequest(InstrumentMarket.CRYPTO, "KRW-BTC",
                 java.time.LocalDate.of(2025, 1, 1), java.time.LocalDate.of(2024, 1, 1),
-                null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null);
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> controller.requestBacktest(body))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("presetId 로 요청하면 본인 프리셋 설정과 이름을 파라미터에 싣는다")
+    void strategyWithPreset() throws Exception {
+        var auth = new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                "me@example.com", null, java.util.List.of());
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(auth);
+        try {
+            var config = objectMapper.readTree("{\"factors\":{\"rsi\":{\"weight\":0.5}}}");
+            when(strategyPresetService.resolveConfig(7L, "me@example.com"))
+                    .thenReturn(new StrategyPresetDto.ResolvedConfig("RSI 강화", "abc", config));
+            var body = new AnalysisApiDto.StrategyRequest(InstrumentMarket.KR_STOCK, "005930", null, null, null, 7L, null);
+
+            controller.requestStrategyAnalysis(body);
+
+            ArgumentCaptor<AnalysisRequest> captor = ArgumentCaptor.forClass(AnalysisRequest.class);
+            verify(kafkaProducerService).sendAnalysisRequest(eq(KafkaTopics.STRATEGY_ANALYSIS_REQUEST_TOPIC), captor.capture());
+            var params = objectMapper.readTree(captor.getValue().getParameters());
+            assertThat(params.get("presetName").asText()).isEqualTo("RSI 강화");
+            assertThat(params.at("/config/factors/rsi/weight").asDouble()).isEqualTo(0.5);
+        } finally {
+            org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    @DisplayName("로그인 없이 presetId 를 보내면 인증 예외(401), presetId 와 config 를 함께 보내면 400")
+    void presetRequiresAuthAndIsExclusive() throws Exception {
+        var anonymous = new AnalysisApiDto.StrategyRequest(InstrumentMarket.KR_STOCK, "005930", null, null, null, 7L, null);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> controller.requestStrategyAnalysis(anonymous))
+                .isInstanceOf(org.springframework.security.core.AuthenticationException.class);
+
+        var both = new AnalysisApiDto.StrategyRequest(InstrumentMarket.KR_STOCK, "005930", null, null, null, 7L,
+                objectMapper.readTree("{}"));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> controller.requestStrategyAnalysis(both))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("저장 전 config 는 동기 검증해 정규화된 설정을 싣는다")
+    void backtestWithInlineConfig() throws Exception {
+        var inline = objectMapper.readTree("{\"gate\":{\"enabled\":false}}");
+        when(pythonMarketClient.validateStrategyConfig(inline)).thenReturn(objectMapper.readTree(
+                "{\"config\":{\"gate\":{\"enabled\":false,\"threshold\":-0.5}},\"hash\":\"h\",\"isDefault\":false}"));
+        var body = new AnalysisApiDto.BacktestRequest(InstrumentMarket.US_STOCK, "AAPL", null, null,
+                null, null, null, null, null, null, null, null, null, inline);
+
+        controller.requestBacktest(body);
+
+        ArgumentCaptor<AnalysisRequest> captor = ArgumentCaptor.forClass(AnalysisRequest.class);
+        verify(kafkaProducerService).sendAnalysisRequest(eq(KafkaTopics.BACKTEST_REQUEST_TOPIC), captor.capture());
+        var params = objectMapper.readTree(captor.getValue().getParameters());
+        assertThat(params.at("/config/gate/threshold").asDouble()).isEqualTo(-0.5);
     }
 
     @Test

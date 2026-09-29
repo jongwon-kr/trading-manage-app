@@ -23,7 +23,10 @@ public class PythonClientConfig {
             @Value("${python.market.base-url}") String baseUrl,
             @Value("${python.market.internal-token}") String internalToken
     ) {
+        // HTTP/1.1 고정: 기본값(HTTP/2)은 평문 연결에서 h2c 업그레이드를 시도하는데,
+        // uvicorn 은 업그레이드 요청의 본문을 버려 POST(전략 설정 검증)가 빈 본문으로 도착한다.
         HttpClient httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofSeconds(2))
                 .build();
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);

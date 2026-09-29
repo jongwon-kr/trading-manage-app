@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.tbill.backendapi.domain.analysis.AnalysisType;
+import io.tbill.backendapi.domain.strategy.dto.StrategyPresetDto;
+import io.tbill.backendapi.domain.strategy.service.StrategyPresetService;
 import io.tbill.backendapi.global.utils.auth.AuthUtils;
 import io.tbill.backendapi.infrastructure.client.python.PythonMarketClient;
 import io.tbill.backendapi.infrastructure.kafka.KafkaTopics;
@@ -21,6 +23,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -35,6 +38,7 @@ public class AnalysisController {
     private final AnalysisResultCacheService analysisResultCacheService;
     private final ObjectMapper objectMapper;
     private final PythonMarketClient pythonMarketClient;
+    private final StrategyPresetService strategyPresetService;
 
     /**
      * [수정] 500 오류 해결:
@@ -47,6 +51,25 @@ public class AnalysisController {
         } catch (Exception e) {
             log.warn("인증되지 않은 사용자의 분석 요청");
             return "anonymous";
+        }
+    }
+
+    /**
+     * 분석 방법(전략 설정)을 Python 파라미터에 싣는다. Python 은 stateless 라 프리셋을 여기서 풀어 전달한다.
+     * - presetId: 로그인 필요(없으면 401), 본인 프리셋만(없으면 404)
+     * - config: 저장 전 미리보기. 동기 검증해 잘못된 설정은 즉시 400 + errors
+     */
+    private void applyStrategyConfig(Map<String, Object> params, Long presetId, JsonNode config) {
+        if (presetId != null && config != null && !config.isNull()) {
+            throw new IllegalArgumentException("presetId 와 config 는 함께 보낼 수 없습니다.");
+        }
+        if (presetId != null) {
+            StrategyPresetDto.ResolvedConfig resolved =
+                    strategyPresetService.resolveConfig(presetId, AuthUtils.getCurrentUserEmail());
+            params.put("config", resolved.config());
+            params.put("presetName", resolved.name());
+        } else if (config != null && !config.isNull()) {
+            params.put("config", pythonMarketClient.validateStrategyConfig(config).get("config"));
         }
     }
 
@@ -108,6 +131,8 @@ public class AnalysisController {
             @Valid @RequestBody AnalysisApiDto.StrategyRequest request
     ) throws JsonProcessingException {
         String requestId = UUID.randomUUID().toString();
+        Map<String, Object> params = request.toParameters();
+        applyStrategyConfig(params, request.presetId(), request.config());
 
         AnalysisRequest kafkaRequest = AnalysisRequest.builder()
                 .requestId(requestId)
@@ -115,8 +140,8 @@ public class AnalysisController {
                 .analysisType(AnalysisType.STRATEGY)
                 .symbol(request.symbol().trim())
                 .market(request.market().name())
-                .timeframe(request.toParameters().get("interval").toString())
-                .parameters(objectMapper.writeValueAsString(request.toParameters()))
+                .timeframe(params.get("interval").toString())
+                .parameters(objectMapper.writeValueAsString(params))
                 .requestedAt(LocalDateTime.now())
                 .build();
 
@@ -136,6 +161,8 @@ public class AnalysisController {
             throw new IllegalArgumentException("시작일은 종료일보다 이전이어야 합니다.");
         }
         String requestId = UUID.randomUUID().toString();
+        Map<String, Object> params = request.toParameters();
+        applyStrategyConfig(params, request.presetId(), request.config());
 
         AnalysisRequest kafkaRequest = AnalysisRequest.builder()
                 .requestId(requestId)
@@ -146,7 +173,7 @@ public class AnalysisController {
                 .timeframe("1d")
                 .startDate(request.from() != null ? request.from().atStartOfDay() : null)
                 .endDate(request.to() != null ? request.to().atTime(23, 59, 59) : null)
-                .parameters(objectMapper.writeValueAsString(request.toParameters()))
+                .parameters(objectMapper.writeValueAsString(params))
                 .requestedAt(LocalDateTime.now())
                 .build();
 
