@@ -9,6 +9,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SafeHtml } from "@/components/common/SafeHtml";
+import { ShareJournalDialog } from "@/components/community/ShareDialogs";
 import { JournalApiDto, TradeType } from "@/types/journal.types";
 import {
   TrendingUp,
@@ -69,6 +71,7 @@ const InfoRow = ({ label, value, icon: Icon }: { label: string; value: React.Rea
 
 
 export function JournalViewModal({ isOpen, onClose, journal, isLoading }: JournalViewModalProps) {
+  const [shareOpen, setShareOpen] = React.useState(false);
   const renderContent = () => {
     if (isLoading || !journal) {
       return (
@@ -136,10 +139,9 @@ export function JournalViewModal({ isOpen, onClose, journal, isLoading }: Journa
 
              <div className="space-y-2">
                 <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2"><FileText className="h-5 w-5" />매매 근거</h4>
-                <div 
-                    className="prose prose-sm max-w-none rounded-md border p-4 min-h-[150px] bg-muted/50"
-                    dangerouslySetInnerHTML={{ __html: journal.reasoning?.markdown || "<p>작성된 근거가 없습니다.</p>" }} 
-                />
+                {/* (수정) 저장형 XSS: 원문 HTML 을 그대로 넣지 않고 정화해서 렌더링 */}
+                <SafeHtml html={journal.reasoning?.markdown} empty="작성된 근거가 없습니다."
+                          className="rounded-md border p-4 min-h-[150px] bg-muted/50" />
              </div>
 
              <div className="flex justify-between text-xs text-muted-foreground pt-4 border-t">
@@ -168,9 +170,16 @@ export function JournalViewModal({ isOpen, onClose, journal, isLoading }: Journa
           </DialogDescription>
         </DialogHeader>
         {renderContent()}
-        <Button onClick={onClose} variant="outline" className="mt-4">
-          닫기
-        </Button>
+        <div className="mt-4 flex gap-2">
+          {journal && !isLoading && (
+            <Button onClick={() => setShareOpen(true)}>커뮤니티에 공유</Button>
+          )}
+          <Button onClick={onClose} variant="outline" className="flex-1">
+            닫기
+          </Button>
+        </div>
+        <ShareJournalDialog journalId={journal?.id != null ? Number(journal.id) : null} symbol={journal?.symbol}
+                            open={shareOpen} onOpenChange={setShareOpen} />
       </DialogContent>
     </Dialog>
   );

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, FlaskConical, Loader2, Play, Save, Search } from "lucide-react";
+import { AlertTriangle, ArrowLeft, FlaskConical, Loader2, Play, Save, Search, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import { SignalBadge } from "@/components/analysis/SignalBadge";
 import { FactorEditor } from "@/components/strategy/FactorEditor";
 import { SignalRiskEditor, WeightsEditor } from "@/components/strategy/SettingsEditors";
 import { SymbolSearchDialog } from "@/components/market/SymbolSearchDialog";
+import { ShareStrategyDialog } from "@/components/community/ShareDialogs";
 import { useGetPresetQuery, useUpdatePresetMutation } from "@/api/strategy-preset.api";
 import { useGetAnalysisModelQuery } from "@/api/strategy.api";
 import { useGetSymbolQuery } from "@/api/market.api";
@@ -126,6 +127,7 @@ export function StrategyEditor() {
   const [serverErrors, setServerErrors] = useState<FieldError[]>([]);
   const [target, setTarget] = useState<{ market: MarketCode; code: string }>({ market: "KR_STOCK", code: "005930" });
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     if (!preset) return;
@@ -242,6 +244,10 @@ export function StrategyEditor() {
                 <Button variant="outline" disabled={!dirty} onClick={() => {
                   setDraft(preset.config); setName(preset.name); setDescription(preset.description ?? ""); setServerErrors([]);
                 }}>되돌리기</Button>
+                <Button variant="secondary" className="ml-auto gap-2" disabled={dirty} onClick={() => setShareOpen(true)}
+                        title={dirty ? "저장한 뒤 공유할 수 있습니다" : undefined}>
+                  <Share2 className="h-4 w-4" />공유
+                </Button>
               </div>
               <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
@@ -290,6 +296,7 @@ export function StrategyEditor() {
           </Card>
         </div>
       </div>
+      <ShareStrategyDialog preset={preset} open={shareOpen} onOpenChange={setShareOpen} />
       <SymbolSearchDialog open={pickerOpen} onOpenChange={setPickerOpen}
                           onSelect={(s) => setTarget({ market: s.market, code: s.code })} />
     </div>

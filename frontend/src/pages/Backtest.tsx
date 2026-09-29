@@ -20,6 +20,7 @@ import { useSelectedPreset } from "@/hooks/useSelectedPreset";
 import { useGetCandlesQuery, useGetSymbolQuery } from "@/api/market.api";
 import { useRequestBacktestMutation } from "@/api/strategy.api";
 import { useAnalysisJob } from "@/hooks/useAnalysisJob";
+import { saveBacktest } from "@/lib/backtest-history";
 import { chartPalette } from "@/lib/chart-theme";
 import { changeColorClass, formatMoney, formatNumber, formatPercent } from "@/lib/format";
 import { marketSlug, parseMarketParam, symbolPath } from "@/lib/market";
@@ -233,6 +234,13 @@ export function Backtest() {
   const job = useAnalysisJob<BacktestResult>(requestId, { timeoutMs: 180_000 });
   const baseJob = useAnalysisJob<BacktestResult>(baseRequestId, { timeoutMs: 180_000 });
   const comparing = compare && preset.presetId != null;
+  // 완료된 결과를 기록 → 전략 공유 시 성과로 첨부
+  const done = job.result;
+  useEffect(() => {
+    if (!done?.config || !requestId) return;
+    saveBacktest({ requestId, configHash: done.config.hash, presetName: done.config.name, symbol: done.symbol,
+      name: done.name, from: done.from, to: done.to, totalReturn: done.metrics.totalReturn, mdd: done.metrics.mdd, at: Date.now() });
+  }, [done, requestId]);
   const busy = requesting || job.status === "PROCESSING" || (comparing && baseJob.status === "PROCESSING");
 
   const submit = async () => {

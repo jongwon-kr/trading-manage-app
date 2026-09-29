@@ -52,6 +52,8 @@ dependencies {
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     implementation 'io.github.cdimascio:java-dotenv:5.2.2'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
+    // 커뮤니티 게시글·매매일지 HTML 정화 (저장형 XSS 방지)
+    implementation 'org.jsoup:jsoup:1.18.1'
 
     // test (H2 DB 추가)
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

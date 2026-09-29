@@ -26,10 +26,20 @@ public class User {
     @Column(name = "password", nullable = false)
     private String password;
 
+    /** 기존 행이 있어도 ddl-auto:update 가 실패하지 않도록 DB 기본값 USER */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", length = 16, columnDefinition = "varchar(16) default 'USER' not null")
+    private UserRole role = UserRole.USER;
+
     @Builder
     public User(String username, String email, String password) {
         this.username = username;
         this.email = email;
         this.password = password;
+        this.role = UserRole.USER;
+    }
+
+    public boolean isAdmin() {
+        return role == UserRole.ADMIN;
     }
 }

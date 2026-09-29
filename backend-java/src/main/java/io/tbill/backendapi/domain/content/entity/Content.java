@@ -10,10 +10,19 @@ import lombok.NoArgsConstructor;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 커뮤니티 게시글. 매매일지·전략 공유 글은 공유 시점의 스냅샷(JSON)을 attachment 에 담는다
+ * (원본 일지·전략이 바뀌거나 지워져도 게시글은 그대로).
+ * 카운터 컬럼은 기존 행이 있어도 ddl-auto:update 가 실패하지 않도록 DB 기본값을 둔다.
+ */
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "content")
+@Table(name = "content", indexes = {
+        @Index(name = "idx_content_category_created", columnList = "category, created_at"),
+        @Index(name = "idx_content_author_email", columnList = "author_email"),
+        @Index(name = "idx_content_symbol_key", columnList = "symbol_key")
+})
 public class Content extends BaseTimeEntity {
 
     @Id
@@ -28,6 +37,7 @@ public class Content extends BaseTimeEntity {
     @Column(name = "title", nullable = false)
     private String title;
 
+    /** 정화된 HTML (HtmlSanitizer) */
     @Column(name = "content", columnDefinition = "TEXT")
     private String content;
 
@@ -40,40 +50,102 @@ public class Content extends BaseTimeEntity {
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted;
 
-    // (중요) 댓글(Comment)과의 연관관계 (1:N)
-    // CascadeType.ALL: 게시글이 삭제(물리)되면 댓글도 삭제됨
-    // orphanRemoval = true: 컬렉션에서 댓글이 제거되면 DB에서도 삭제됨
+    @Enumerated(EnumType.STRING)
+    @Column(name = "attachment_type", length = 16, columnDefinition = "varchar(16) default 'NONE' not null")
+    private AttachmentType attachmentType;
+
+    /** 공유 스냅샷 JSON (매매일지·전략) */
+    @Column(name = "attachment", columnDefinition = "TEXT")
+    private String attachment;
+
+    /** 관련 종목 MARKET:CODE (필터용, 없으면 null) */
+    @Column(name = "symbol_key", length = 64)
+    private String symbolKey;
+
+    /** 전략 공유의 백테스트 총수익률·MDD (정렬용) */
+    @Column(name = "metric_return")
+    private Double metricReturn;
+
+    @Column(name = "metric_mdd")
+    private Double metricMdd;
+
+    @Column(name = "like_count", columnDefinition = "integer default 0 not null")
+    private int likeCount;
+
+    @Column(name = "comment_count", columnDefinition = "integer default 0 not null")
+    private int commentCount;
+
+    @Column(name = "import_count", columnDefinition = "integer default 0 not null")
+    private int importCount;
+
+    /** 관리자 숨김 (작성자에게만 '숨김 처리됨'으로 보인다) */
+    @Column(name = "hidden", columnDefinition = "boolean default false not null")
+    private boolean hidden;
+
     @OneToMany(mappedBy = "content", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @OrderBy("createdAt ASC") // 댓글을 생성순으로 정렬
+    @OrderBy("createdAt ASC")
     private List<Comment> comments = new ArrayList<>();
 
-
     @Builder
-    public Content(ContentCategory category, String title, String content, String authorEmail) {
+    public Content(ContentCategory category, String title, String content, String authorEmail,
+                   AttachmentType attachmentType, String attachment, String symbolKey, Double metricReturn,
+                   Double metricMdd) {
         this.category = category;
         this.title = title;
         this.content = content;
         this.authorEmail = authorEmail;
-        this.viewCount = 0; // 생성 시 조회수 0
-        this.isDeleted = false; // 생성 시 삭제 안 됨
+        this.attachmentType = attachmentType != null ? attachmentType : AttachmentType.NONE;
+        this.attachment = attachment;
+        this.symbolKey = symbolKey;
+        this.metricReturn = metricReturn;
+        this.metricMdd = metricMdd;
+        this.viewCount = 0;
+        this.isDeleted = false;
     }
 
-    // (편의 메서드) 수정
-    public void update(ContentCategory category, String title, String content) {
-        this.category = category;
+    public void update(String title, String content) {
         this.title = title;
         this.content = content;
     }
 
-    // (편의 메서드) 소프트 삭제
     public void softDelete() {
         this.isDeleted = true;
-        // (선택) 게시글이 삭제되면 댓글도 모두 소프트 삭제 처리
         this.comments.forEach(Comment::softDelete);
     }
 
-    // (편의 메서드) 조회수 증가
     public void increaseViewCount() {
         this.viewCount += 1;
+    }
+
+    public void increaseLikeCount() {
+        this.likeCount += 1;
+    }
+
+    public void decreaseLikeCount() {
+        this.likeCount = Math.max(0, this.likeCount - 1);
+    }
+
+    public void increaseCommentCount() {
+        this.commentCount += 1;
+    }
+
+    public void decreaseCommentCount() {
+        this.commentCount = Math.max(0, this.commentCount - 1);
+    }
+
+    public void increaseImportCount() {
+        this.importCount += 1;
+    }
+
+    public void hide() {
+        this.hidden = true;
+    }
+
+    public void unhide() {
+        this.hidden = false;
+    }
+
+    public boolean isVisibleTo(String viewerEmail) {
+        return !Boolean.TRUE.equals(isDeleted) && (!hidden || authorEmail.equals(viewerEmail));
     }
 }

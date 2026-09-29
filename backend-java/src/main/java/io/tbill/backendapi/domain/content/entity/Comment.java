@@ -32,11 +32,15 @@ public class Comment extends BaseTimeEntity {
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted;
 
+    /** 관리자 숨김 */
+    @Column(name = "hidden", columnDefinition = "boolean default false not null")
+    private boolean hidden;
+
     @Builder
     public Comment(Content content, String authorEmail, String comment) {
         this.content = content;
         this.authorEmail = authorEmail;
-        this.content = content;
+        this.comment = comment; // (수정) 기존에는 this.content 를 두 번 대입해 본문이 null → INSERT 실패
         this.isDeleted = false; // 생성 시 기본값
     }
 
@@ -48,5 +52,13 @@ public class Comment extends BaseTimeEntity {
     // (편의 메서드) 소프트 삭제
     public void softDelete() {
         this.isDeleted = true;
+    }
+
+    public void hide() {
+        this.hidden = true;
+    }
+
+    public void unhide() {
+        this.hidden = false;
     }
 }
