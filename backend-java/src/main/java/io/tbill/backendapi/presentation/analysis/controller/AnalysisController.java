@@ -1,11 +1,13 @@
 package io.tbill.backendapi.presentation.analysis.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.tbill.backendapi.domain.analysis.AnalysisType;
 import io.tbill.backendapi.global.utils.auth.AuthUtils;
+import io.tbill.backendapi.infrastructure.client.python.PythonMarketClient;
 import io.tbill.backendapi.infrastructure.kafka.KafkaTopics;
 import io.tbill.backendapi.infrastructure.kafka.dto.AnalysisRequest;
 import io.tbill.backendapi.infrastructure.kafka.service.KafkaProducerService;
@@ -32,6 +34,7 @@ public class AnalysisController {
     private final KafkaProducerService kafkaProducerService;
     private final AnalysisResultCacheService analysisResultCacheService;
     private final ObjectMapper objectMapper;
+    private final PythonMarketClient pythonMarketClient;
 
     /**
      * [수정] 500 오류 해결:
@@ -151,6 +154,13 @@ public class AnalysisController {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new AnalysisApiDto.RequestIdResponse(requestId, "백테스트 요청이 접수되었습니다."));
+    }
+
+    @Operation(summary = "분석 모델 설명",
+            description = "전략 점수 모델의 팩터별 설명·공식·파라미터·밴드 기본값과 기본 전략 설정을 반환합니다.")
+    @GetMapping("/model")
+    public ResponseEntity<JsonNode> getModel() {
+        return ResponseEntity.ok(pythonMarketClient.getAnalysisModel());
     }
 
     @Operation(summary = "AI 분석 결과 조회", description = "발급받은 requestId로 분석 결과를 폴링(Polling)합니다.")

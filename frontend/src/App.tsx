@@ -18,6 +18,7 @@ const Dashboard = named(() => import("@/pages/Dashboard"), "Dashboard");
 const MarketOverview = named(() => import("@/pages/MarketOverview"), "MarketOverview");
 const SymbolDetail = named(() => import("@/pages/SymbolDetail"), "SymbolDetail");
 const Analysis = named(() => import("@/pages/Analysis"), "Analysis");
+const Methodology = named(() => import("@/pages/Methodology"), "Methodology");
 const Backtest = named(() => import("@/pages/Backtest"), "Backtest");
 const Watchlist = named(() => import("@/pages/Watchlist"), "Watchlist");
 const Journal = named(() => import("@/pages/Journal"), "Journal");
@@ -51,6 +52,7 @@ const AppContent = () => {
         <Route path="market/:market/:symbol" element={<SymbolDetail />} />
         <Route path="watchlist" element={<Watchlist />} />
         <Route path="analysis" element={<Analysis />} />
+        <Route path="analysis/methodology" element={<Methodology />} />
         <Route path="backtest" element={<Backtest />} />
         <Route path="journal" element={<Journal />} />
         <Route path="performance" element={<Performance />} />

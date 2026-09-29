@@ -104,6 +104,25 @@ public class PythonMarketClient {
                 new ParameterizedTypeReference<>() {});
     }
 
+    /** 분석 모델 카탈로그(팩터 설명·파라미터·밴드 기본값) + 기본 전략 설정 */
+    public JsonNode getAnalysisModel() {
+        return get(uri -> uri.path("/internal/v1/analysis/model").build(), new ParameterizedTypeReference<>() {});
+    }
+
+    /**
+     * 전략 설정(부분 설정 가능)을 기본값과 병합·검증한다. 반환: {config, hash, isDefault}.
+     * 검증 실패는 400 MarketException(STRATEGY_CONFIG_INVALID, errors[{path, msg}]).
+     */
+    public JsonNode validateStrategyConfig(JsonNode config) {
+        try {
+            return restClient.post().uri("/internal/v1/analysis/config/validate")
+                    .body(config).retrieve().body(JsonNode.class);
+        } catch (ResourceAccessException e) {
+            log.error("Python 분석 API 연결 실패: {}", e.getMessage());
+            throw MarketException.unavailable("분석 서비스에 연결할 수 없습니다.");
+        }
+    }
+
     private <T> T get(Function<UriBuilder, URI> uri, ParameterizedTypeReference<T> type) {
         try {
             return restClient.get().uri(uri).retrieve().body(type);
@@ -117,10 +136,12 @@ public class PythonMarketClient {
         HttpStatusCode status = response.getStatusCode();
         String code = null;
         String message = null;
+        JsonNode errors = null;
         try {
             JsonNode body = objectMapper.readTree(response.getBody());
             code = body.path("code").asText(null);
             message = body.path("message").asText(null);
+            errors = body.has("errors") ? body.get("errors") : null;
         } catch (Exception ignored) {
             // 본문이 JSON 이 아니면 상태 코드로만 판단
         }
@@ -136,7 +157,7 @@ public class PythonMarketClient {
         }
         if (status.is4xxClientError()) {
             return new MarketException(code != null ? code : "MARKET_BAD_REQUEST", HttpStatus.BAD_REQUEST,
-                    message != null ? message : "잘못된 시세 요청입니다.");
+                    message != null ? message : "잘못된 시세 요청입니다.", errors);
         }
         return new MarketException(code != null ? code : "MARKET_DATA_UNAVAILABLE", HttpStatus.SERVICE_UNAVAILABLE,
                 message != null ? message : "시세 데이터를 가져오지 못했습니다.");

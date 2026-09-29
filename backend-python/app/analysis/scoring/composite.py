@@ -7,28 +7,30 @@
 """
 import pandas as pd
 
+from app.analysis.model.catalog import GROUP_LABELS
+from app.analysis.model.config import SignalConfig, StrategyConfig, default_config
 from app.analysis.scoring.primitives import Factor, group_point, group_series
-from app.analysis.scoring.weights import (BUY, GROUP_LABELS, GROUP_WEIGHTS, REGIME_RISK_OFF, SELL, STRONG_BUY,
-                                          STRONG_SELL)
 
 SIGNAL_LABELS = {"STRONG_BUY": "강한 매수", "BUY": "매수", "HOLD": "관망", "SELL": "매도", "STRONG_SELL": "강한 매도"}
 
 
-def strength_of(score: float) -> str:
-    if score >= STRONG_BUY:
+def strength_of(score: float, signal: SignalConfig | None = None) -> str:
+    t = signal or SignalConfig()
+    if score >= t.strong_buy:
         return "STRONG_BUY"
-    if score >= BUY:
+    if score >= t.buy:
         return "BUY"
-    if score <= STRONG_SELL:
+    if score <= t.strong_sell:
         return "STRONG_SELL"
-    if score <= SELL:
+    if score <= t.sell:
         return "SELL"
     return "HOLD"
 
 
-def evaluate(market: str, groups: dict[str, list[Factor]]) -> dict:
+def evaluate(market: str, groups: dict[str, list[Factor]], cfg: StrategyConfig | None = None) -> dict:
     """마지막 시점 기준 종합 평가. groups: {"technical": [...], "fundamental": [...], "regime": [...]}"""
-    base = GROUP_WEIGHTS[market]
+    cfg = cfg or default_config()
+    base = cfg.group_weights[market]
     points = {g: group_point(fs) for g, fs in groups.items()}
     eff = {g: base.get(g, 0.0) * cov if points[g][0] is not None else 0.0 for g, (_, cov) in points.items()}
     total_eff = sum(eff.values())
@@ -47,11 +49,15 @@ def evaluate(market: str, groups: dict[str, list[Factor]]) -> dict:
         for f in factors:
             v = f.value_at()
             in_group = f.weight / avail_w if v is not None else 0.0
+            explain = dict(f.explain)
+            if explain:
+                explain["weightPath"] = {**explain["weightPath"], "groupShare": _r(g_share),
+                                         "inGroup": _r(in_group), "effective": _r(g_share * in_group)}
             factor_out.append({
                 "key": f.key, "label": f.label, "subGroup": f.sub_group,
                 "score": _r(v), "weight": _r(g_share * in_group),
                 "contribution": _r(50 * g_share * in_group * v) if v is not None else 0.0,
-                "raw": f.raw, "note": f.note,
+                "raw": f.raw, "note": f.note, "explain": explain,
             })
         group_out.append({
             "key": g, "label": GROUP_LABELS[g], "score": _r(g_score),
@@ -60,10 +66,11 @@ def evaluate(market: str, groups: dict[str, list[Factor]]) -> dict:
             "factors": factor_out,
         })
 
-    strength = strength_of(score)
+    strength = strength_of(score, cfg.signal)
     warnings = []
     regime_score = points.get("regime", (None, 0))[0]
-    if strength in ("BUY", "STRONG_BUY") and regime_score is not None and regime_score < REGIME_RISK_OFF:
+    if (cfg.gate.enabled and strength in ("BUY", "STRONG_BUY") and regime_score is not None
+            and regime_score < cfg.gate.threshold):
         warnings.append("시장 위험회피 국면 — 매수 신호를 관망으로 낮춤")
         strength = "HOLD"
     signal = "BUY" if strength in ("BUY", "STRONG_BUY") else "SELL" if strength in ("SELL", "STRONG_SELL") else "HOLD"
@@ -80,9 +87,10 @@ def evaluate(market: str, groups: dict[str, list[Factor]]) -> dict:
             "regimeScore": regime_score}
 
 
-def score_series(market: str, groups: dict[str, list[Factor]], index: pd.Index) -> pd.Series:
+def score_series(market: str, groups: dict[str, list[Factor]], index: pd.Index,
+                 cfg: StrategyConfig | None = None) -> pd.Series:
     """시계열 종합 점수 (백테스트용). evaluate 와 같은 재정규화 규칙."""
-    base = GROUP_WEIGHTS[market]
+    base = (cfg or default_config()).group_weights[market]
     num = pd.Series(0.0, index=index)
     den = pd.Series(0.0, index=index)
     for g, factors in groups.items():
