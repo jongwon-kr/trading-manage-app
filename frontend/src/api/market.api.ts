@@ -10,6 +10,7 @@ import type {
   Quote,
   SymbolInfo,
 } from "@/types/market.types";
+import type { Briefing, MarketTrends, TrendGroup } from "@/types/trends.types";
 
 export interface CandlesArgs {
   market: MarketCode;
@@ -48,6 +49,18 @@ export const marketApi = baseApi.injectEndpoints({
     getMovers: build.query<Movers, { market: MarketCode; limit?: number }>({
       query: (params) => ({ url: API_ENDPOINTS.MARKET.MOVERS, params }),
     }),
+    getTrends: build.query<MarketTrends, MarketCode>({
+      query: (market) => ({ url: API_ENDPOINTS.MARKET.TRENDS, params: { market } }),
+    }),
+    getTrendGroup: build.query<TrendGroup, { market: MarketCode; kind: TrendGroup["kind"]; id: string }>({
+      query: ({ market, kind, id }) => ({ url: API_ENDPOINTS.MARKET.TREND_GROUP(market, kind, id) }),
+    }),
+    getBriefing: build.query<Briefing, { market: MarketCode; date?: string }>({
+      query: ({ market, date }) => ({ url: API_ENDPOINTS.MARKET.BRIEFING, params: date ? { market, date } : { market } }),
+    }),
+    getBriefingDates: build.query<string[], MarketCode>({
+      query: (market) => ({ url: API_ENDPOINTS.MARKET.BRIEFING_DATES, params: { market } }),
+    }),
   }),
 });
 
@@ -60,4 +73,8 @@ export const {
   useGetFundamentalsQuery,
   useGetOverviewQuery,
   useGetMoversQuery,
+  useGetTrendsQuery,
+  useGetTrendGroupQuery,
+  useGetBriefingQuery,
+  useGetBriefingDatesQuery,
 } = marketApi;

@@ -24,4 +24,12 @@ public interface MarketService {
     JsonNode getOverview();
 
     MarketDto.MoversInfo getMovers(InstrumentMarket market, int limit);
+
+    JsonNode getTrends(InstrumentMarket market);
+
+    JsonNode getTrendGroup(InstrumentMarket market, String kind, String groupId);
+
+    JsonNode getBriefing(InstrumentMarket market, java.time.LocalDate date);
+
+    JsonNode getBriefingDates(InstrumentMarket market);
 }

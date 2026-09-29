@@ -8,10 +8,12 @@ from fastapi import APIRouter, Depends, Query
 
 from app.analysis.jobs import regime_summary
 from app.api.deps import verify_internal_token
-from app.core.errors import BadRequest
+from app.core.errors import BadRequest, SymbolNotFound
+from app.market.briefing import briefing_dates, get_briefing
 from app.market.models import Market
 from app.market.normalize import frame_to_rows, rows_to_candles
 from app.market.service import get_service
+from app.market.trends import load_group_stocks, load_trends
 
 router = APIRouter(prefix="/internal/v1", dependencies=[Depends(verify_internal_token)])
 
@@ -82,3 +84,30 @@ def get_overview():
 @router.get("/movers")
 def get_movers(market: Market, limit: int = Query(10, ge=1, le=30)):
     return get_service().get_movers(market, limit)
+
+
+@router.get("/trends")
+def get_trends(market: Market):
+    """섹터 로테이션·주도 섹터·오늘의 업종/테마(KR)·코인 카테고리(CRYPTO)"""
+    return load_trends(get_service(), market)
+
+
+@router.get("/trends/groups/{market}/{kind}/{group_id}")
+def get_trend_group(market: Market, kind: str, group_id: str):
+    """kind: industry|theme (KR, 네이버 번호) · sector (US, 섹터 키)"""
+    if kind not in ("industry", "theme", "sector"):
+        raise BadRequest(f"알 수 없는 그룹 종류입니다: {kind}")
+    return load_group_stocks(get_service(), market, kind, group_id)
+
+
+@router.get("/briefing")
+def get_market_briefing(market: Market, date: str | None = None):
+    b = get_briefing(get_service(), market, date)
+    if b is None:
+        raise SymbolNotFound(f"{date} 브리핑이 없습니다.")
+    return b
+
+
+@router.get("/briefing/dates")
+def get_briefing_dates(market: Market):
+    return briefing_dates(market)

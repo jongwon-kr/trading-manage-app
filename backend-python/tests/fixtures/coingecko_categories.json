@@ -1,0 +1,154 @@
+[
+ {
+  "id": "smart-contract-platform",
+  "name": "Smart Contract Platform",
+  "market_cap": 2474767274543.5767,
+  "market_cap_change_24h": -0.2603500541599458,
+  "content": "Smart contract platforms are usually blockchains that host smart contracts or decentralized applications. Users can interact with different smart contracts on these platforms to perform various actions such as lending and borrowing funds, staking their assets or minting NFTs. Smart contracts are programs that are stored on the blockchain and are automatically executed when certain conditions are met.",
+  "top_3_coins_id": [
+   "bitcoin",
+   "ethereum",
+   "binancecoin"
+  ],
+  "top_3_coins": [
+   "https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png",
+   "https://coin-images.coingecko.com/coins/images/279/small/ethereum.png",
+   "https://coin-images.coingecko.com/coins/images/825/small/bnb-icon2_2x.png"
+  ],
+  "volume_24h": 79470158524.70082,
+  "updated_at": "2026-09-29T05:14:17.000Z"
+ },
+ {
+  "id": "layer-1",
+  "name": "Layer 1 (L1)",
+  "market_cap": 2436976242032.4697,
+  "market_cap_change_24h": -0.22576398198394457,
+  "content": "Layer 1 serves as the primary and autonomous chain on which transactions are directly executed and confirmed, as well as providing the essential infrastructure for the blockchain network.",
+  "top_3_coins_id": [
+   "bitcoin",
+   "ethereum",
+   "binancecoin"
+  ],
+  "top_3_coins": [
+   "https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png",
+   "https://coin-images.coingecko.com/coins/images/279/small/ethereum.png",
+   "https://coin-images.coingecko.com/coins/images/825/small/bnb-icon2_2x.png"
+  ],
+  "volume_24h": 75791872317.64719,
+  "updated_at": "2026-09-29T05:14:17.000Z"
+ },
+ {
+  "id": "proof-of-work-pow",
+  "name": "Proof of Work (PoW)",
+  "market_cap": 1737911107261.0864,
+  "market_cap_change_24h": -0.27212386340956485,
+  "content": "Proof of Work (PoW) is a blockchain consensus mechanism to validate transactions and create new blocks through computational efforts by miners.",
+  "top_3_coins_id": [
+   "bitcoin",
+   "zcash",
+   "dogecoin"
+  ],
+  "top_3_coins": [
+   "https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png",
+   "https://coin-images.coingecko.com/coins/images/486/small/Brandmark-Yellow_(1).png",
+   "https://coin-images.coingecko.com/coins/images/5/small/dogecoin.png"
+  ],
+  "volume_24h": 42146741727.41308,
+  "updated_at": "2026-09-29T05:14:17.000Z"
+ },
+ {
+  "id": "world-liberty-financial-portfolio",
+  "name": "World Liberty Financial Portfolio",
+  "market_cap": 646367924167.7368,
+  "market_cap_change_24h": 0.24691708528458908,
+  "content": "The World Liberty Financial portfolio includes purchases made by the World Liberty Financial project. World Liberty Financial is a DeFi project associated with U.S. presidential candidate Donald Trump and his family members.",
+  "top_3_coins_id": [
+   "ethereum",
+   "tether",
+   "usd-coin"
+  ],
+  "top_3_coins": [
+   "https://coin-images.coingecko.com/coins/images/279/small/ethereum.png",
+   "https://coin-images.coingecko.com/coins/images/325/small/Tether.png",
+   "https://coin-images.coingecko.com/coins/images/6319/small/USDC.png"
+  ],
+  "volume_24h": 113535096649.41483,
+  "updated_at": "2026-09-29T05:14:17.000Z"
+ },
+ {
+  "id": "proof-of-stake-pos",
+  "name": "Proof of Stake (PoS)",
+  "market_cap": 588112007077.6371,
+  "market_cap_change_24h": -0.4486332180294459,
+  "content": "Proof of Stake (PoS) is a blockchain consensus mechanism where validators are selected to create new blocks based on the amount of cryptocurrency they hold and are willing to stake as collateral.",
+  "top_3_coins_id": [
+   "ethereum",
+   "binancecoin",
+   "solana"
+  ],
+  "top_3_coins": [
+   "https://coin-images.coingecko.com/coins/images/279/small/ethereum.png",
+   "https://coin-images.coingecko.com/coins/images/825/small/bnb-icon2_2x.png",
+   "https://coin-images.coingecko.com/coins/images/4128/small/solana.png"
+  ],
+  "volume_24h": 27171043981.129402,
+  "updated_at": "2026-09-29T05:14:17.000Z"
+ },
+ {
+  "id": "made-in-usa",
+  "name": "Made in USA",
+  "market_cap": 376507433650.58594,
+  "market_cap_change_24h": 4.96980031088725,
+  "content": "Refers to cryptocurrencies that have significant connections to the United States, either through their founding team or company headquarters.",
+  "top_3_coins_id": [
+   "ripple",
+   "usd-coin",
+   "solana"
+  ],
+  "top_3_coins": [
+   "https://coin-images.coingecko.com/coins/images/44/small/xrp-symbol-white-128.png",
+   "https://coin-images.coingecko.com/coins/images/6319/small/USDC.png",
+   "https://coin-images.coingecko.com/coins/images/4128/small/solana.png"
+  ],
+  "volume_24h": 46108320539.4304,
+  "updated_at": "2026-09-29T05:14:17.000Z"
+ },
+ {
+  "id": "stablecoins",
+  "name": "Stablecoins",
+  "market_cap": 291997275414.6158,
+  "market_cap_change_24h": -0.16101318177837143,
+  "content": "A stablecoin is a type of cryptocurrency that is designed to maintain a stable value by being pegged to an external reference, such as a fiat currency.",
+  "top_3_coins_id": [
+   "tether",
+   "usd-coin",
+   "usds"
+  ],
+  "top_3_coins": [
+   "https://coin-images.coingecko.com/coins/images/325/small/Tether.png",
+   "https://coin-images.coingecko.com/coins/images/6319/small/USDC.png",
+   "https://coin-images.coingecko.com/coins/images/39926/small/usds.webp"
+  ],
+  "volume_24h": 96018095078.83218,
+  "updated_at": "2026-09-29T05:14:17.000Z"
+ },
+ {
+  "id": "usd-stablecoin",
+  "name": "USD Stablecoin",
+  "market_cap": 289654770831.09216,
+  "market_cap_change_24h": -0.15150723662751633,
+  "content": "A USD stablecoin is a type of cryptocurrency that is designed to maintain a stable value by being pegged to the United States dollar.",
+  "top_3_coins_id": [
+   "tether",
+   "usd-coin",
+   "usds"
+  ],
+  "top_3_coins": [
+   "https://coin-images.coingecko.com/coins/images/325/small/Tether.png",
+   "https://coin-images.coingecko.com/coins/images/6319/small/USDC.png",
+   "https://coin-images.coingecko.com/coins/images/39926/small/usds.webp"
+  ],
+  "volume_24h": 95912550077.02197,
+  "updated_at": "2026-09-29T05:14:17.000Z"
+ }
+]

@@ -35,6 +35,16 @@ class YfinanceProvider(Provider):
                 out[t] = to_ohlcv(df[t], daily=True)
         return out
 
+    def sector_top(self, key: str, count: int = 15) -> list[dict]:
+        """yf.Sector(key) 상위 기업: [{code, name, weight}] (weight = 섹터 내 시총 비중)"""
+        self.limiter.wait()
+        top = yf.Sector(key).top_companies
+        if top is None or top.empty:
+            return []
+        return [{"code": str(code), "name": row.get("name"), "weight": float(row["market weight"])
+                 if "market weight" in row and pd.notna(row["market weight"]) else None}
+                for code, row in top.head(count).iterrows()]
+
     def quotes(self, tickers: dict[str, str], market: Market = Market.US_STOCK, currency: str = "USD",
                key_prefix: str | None = None) -> list[Quote]:
         """tickers: {code: yf_ticker}. 최근 일봉 2개로 현재가/전일종가를 계산한다."""

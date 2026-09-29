@@ -1,0 +1,55 @@
+{
+ "stockListSortType": "THEME",
+ "groups": [
+  {
+   "no": 615,
+   "name": "2026 하반기 신규상장",
+   "totalCount": 18,
+   "changeRate": "8.84",
+   "riseCount": 3,
+   "fallCount": 15,
+   "steadyCount": 0
+  },
+  {
+   "no": 608,
+   "name": "반도체 기판(FC-BGA/PCB/MLB 등)",
+   "totalCount": 14,
+   "changeRate": "3.86",
+   "riseCount": 12,
+   "fallCount": 2,
+   "steadyCount": 0
+  },
+  {
+   "no": 307,
+   "name": "시스템반도체",
+   "totalCount": 59,
+   "changeRate": "3.26",
+   "riseCount": 33,
+   "fallCount": 24,
+   "steadyCount": 2
+  },
+  {
+   "no": 155,
+   "name": "반도체 대표주(생산)",
+   "totalCount": 3,
+   "changeRate": "3.14",
+   "riseCount": 2,
+   "fallCount": 1,
+   "steadyCount": 0
+  },
+  {
+   "no": 557,
+   "name": "유리 기판",
+   "totalCount": 21,
+   "changeRate": "3.09",
+   "riseCount": 14,
+   "fallCount": 6,
+   "steadyCount": 1
+  }
+ ],
+ "totalCount": 264,
+ "page": 1,
+ "pageSize": 5,
+ "localOpenTimeDesc": "",
+ "marketStatus": "OPEN"
+}

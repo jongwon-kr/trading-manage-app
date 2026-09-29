@@ -13,6 +13,14 @@ class MacroProvider(Provider):
         return [{"value": int(d["value"]), "label": d["value_classification"], "ts": int(d["timestamp"])}
                 for d in data]
 
+    def coin_categories(self) -> list[dict]:
+        """CoinGecko 카테고리(글로벌, USD 기준): [{id, name, marketCap, change24h(비율), volume24h, topCoins[이미지 URL]}]"""
+        data = self.get_json("https://api.coingecko.com/api/v3/coins/categories")
+        return [{"id": c["id"], "name": c["name"], "marketCap": c.get("market_cap"),
+                 "change24h": c["market_cap_change_24h"] / 100 if c.get("market_cap_change_24h") is not None else None,
+                 "volume24h": c.get("volume_24h"), "topCoins": c.get("top_3_coins") or []}
+                for c in data if isinstance(c, dict) and c.get("id")]
+
     def btc_dominance(self) -> float | None:
         data = self.get_json("https://api.coingecko.com/api/v3/global").get("data", {})
         pct = data.get("market_cap_percentage", {}).get("btc")
