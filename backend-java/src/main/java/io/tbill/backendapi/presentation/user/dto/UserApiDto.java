@@ -40,11 +40,14 @@ public class UserApiDto {
         private final Long id;
         private final String username;
         private final String email;
+        /** USER | ADMIN (프론트 관리자 메뉴 표시용) */
+        private final String role;
 
         public UserResponse(UserDto.UserInfo userInfo) {
             this.id = userInfo.getId();
             this.username = userInfo.getUsername();
             this.email = userInfo.getEmail();
+            this.role = userInfo.getRole();
         }
     }
 }

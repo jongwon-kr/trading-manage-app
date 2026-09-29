@@ -1,79 +1,80 @@
 package io.tbill.backendapi.domain.content.service;
 
-import io.tbill.backendapi.domain.content.dto.CommentDto;
+import io.tbill.backendapi.domain.content.dto.ContentDto;
 import io.tbill.backendapi.domain.content.entity.Comment;
 import io.tbill.backendapi.domain.content.entity.Content;
 import io.tbill.backendapi.domain.content.repository.CommentRepository;
 import io.tbill.backendapi.domain.content.repository.ContentRepository;
+import io.tbill.backendapi.global.exception.CommunityException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** 댓글은 평문이다 (프론트가 텍스트로 렌더링). 게시글의 commentCount 를 함께 갱신한다. */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CommentServiceImpl implements CommentService {
 
+    static final int MAX_COMMENT_LENGTH = 2000;
+
     private final CommentRepository commentRepository;
-    private final ContentRepository contentRepository; // 부모 게시글을 찾기 위해
+    private final ContentRepository contentRepository;
+    private final AuthorDirectory authorDirectory;
+    private final ApplicationEventPublisher events;
 
-    // (공통) 댓글 찾기 및 권한 확인
-    private Comment findCommentByIdAndValidateOwner(Long commentId, String authorEmail) {
-        Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new IllegalArgumentException("댓글을 찾을 수 없습니다. ID: " + commentId));
-
-        // (소프트 삭제) 이미 삭제된 댓글인지 확인
-        if (comment.getIsDeleted()) {
-            throw new IllegalArgumentException("이미 삭제된 댓글입니다.");
-        }
-
-        // 작성자 본인인지 확인
-        if (!comment.getAuthorEmail().equals(authorEmail)) {
-            throw new RuntimeException("댓글에 대한 권한이 없습니다."); // (개선) AccessDeniedException
-        }
-        return comment;
+    static ContentDto.CommentInfo toInfo(Comment c, Long contentId, String authorName, String viewerEmail) {
+        return new ContentDto.CommentInfo(c.getId(), contentId, authorName, c.getComment(),
+                c.getAuthorEmail().equals(viewerEmail), c.isHidden(), c.getCreatedAt());
     }
 
     @Override
     @Transactional
-    public CommentDto.Info createComment(Long contentId, String authorEmail, String commentBody) {
-        // 1. 부모 게시글이 (삭제되지 않고) 존재하는지 확인
+    public ContentDto.CommentInfo createComment(Long contentId, String authorEmail, String comment) {
         Content content = contentRepository.findByIdNotDeleted(contentId)
-                .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다. ID: " + contentId));
-
-        // 2. DTO(Command) 생성
-        CommentDto.CreateCommand command = CommentDto.CreateCommand.builder()
-                .content(content)
-                .authorEmail(authorEmail)
-                .commentBody(commentBody)
-                .build();
-
-        // 3. 엔티티 변환 및 저장
-        Comment comment = command.toEntity();
-        Comment savedComment = commentRepository.save(comment);
-
-        return CommentDto.Info.from(savedComment);
+                .filter(c -> c.isVisibleTo(authorEmail))
+                .orElseThrow(() -> CommunityException.notFound("게시글을 찾을 수 없습니다."));
+        Comment saved = commentRepository.save(Comment.builder()
+                .content(content).authorEmail(authorEmail).comment(validate(comment)).build());
+        content.getComments().add(saved);
+        content.increaseCommentCount();
+        events.publishEvent(new CommunityEvents.Commented(content.getId(), content.getAuthorEmail(), authorEmail,
+                content.getTitle()));
+        return toInfo(saved, contentId, authorDirectory.name(authorEmail), authorEmail);
     }
 
     @Override
     @Transactional
-    public CommentDto.Info updateComment(Long commentId, String authorEmail, String contentBody) {
-        // 1. 댓글 찾기 및 작성자 권한 검증
-        Comment comment = findCommentByIdAndValidateOwner(commentId, authorEmail);
-
-        // 2. 수정 (Dirty Checking)
-        comment.update(contentBody);
-
-        return CommentDto.Info.from(comment);
+    public ContentDto.CommentInfo updateComment(Long commentId, String authorEmail, String comment) {
+        Comment c = findOwned(commentId, authorEmail);
+        c.update(validate(comment));
+        return toInfo(c, c.getContent().getId(), authorDirectory.name(authorEmail), authorEmail);
     }
 
     @Override
     @Transactional
     public void deleteComment(Long commentId, String authorEmail) {
-        // 1. 댓글 찾기 및 작성자 권한 검증
-        Comment comment = findCommentByIdAndValidateOwner(commentId, authorEmail);
+        Comment c = findOwned(commentId, authorEmail);
+        c.softDelete();
+        c.getContent().decreaseCommentCount();
+    }
 
-        // 2. 소프트 삭제 (Dirty Checking)
-        comment.softDelete();
+    private Comment findOwned(Long commentId, String authorEmail) {
+        Comment c = commentRepository.findById(commentId)
+                .filter(cm -> !cm.getIsDeleted() && !cm.getContent().getIsDeleted())
+                .orElseThrow(() -> CommunityException.notFound("댓글을 찾을 수 없습니다."));
+        if (!c.getAuthorEmail().equals(authorEmail)) {
+            throw CommunityException.forbidden("본인이 쓴 댓글만 수정·삭제할 수 있습니다.");
+        }
+        return c;
+    }
+
+    private static String validate(String comment) {
+        String text = comment == null ? "" : comment.trim();
+        if (text.isEmpty() || text.length() > MAX_COMMENT_LENGTH) {
+            throw CommunityException.badRequest("댓글은 1~" + MAX_COMMENT_LENGTH + "자여야 합니다.");
+        }
+        return text;
     }
 }

@@ -33,6 +33,6 @@ const axiosBaseQuery =
 export const baseApi = createApi({
   reducerPath: "api",
   baseQuery: axiosBaseQuery(),
-  tagTypes: ["Watchlist", "Preset"],
+  tagTypes: ["Watchlist", "Preset", "Content", "Notification", "Profile", "Report"],
   endpoints: () => ({}),
 });

@@ -101,6 +101,24 @@ public class StrategyPresetServiceImpl implements StrategyPresetService {
     }
 
     @Override
+    @Transactional
+    public StrategyPresetDto.PresetInfo importPreset(String userEmail, String name, String description, JsonNode config,
+                                                     Long forkedFromPostId) {
+        checkLimit(userEmail);
+        JsonNode validated = validate(config);
+        StrategyPreset saved = strategyPresetRepository.save(StrategyPreset.builder()
+                .userEmail(userEmail)
+                .name(uniqueName(userEmail, name == null || name.isBlank() ? "가져온 전략" : name.trim()))
+                .description(blankToNull(description))
+                .config(validated.get("config").toString())
+                .configHash(validated.get("hash").asText())
+                .forkedFromPostId(forkedFromPostId)
+                .build());
+        log.info("전략 가져오기: user={}, post={}, preset={}", userEmail, forkedFromPostId, saved.getId());
+        return toInfo(saved);
+    }
+
+    @Override
     public StrategyPresetDto.ResolvedConfig resolveConfig(Long id, String userEmail) {
         StrategyPreset preset = find(id, userEmail);
         return new StrategyPresetDto.ResolvedConfig(preset.getName(), preset.getConfigHash(), parse(preset.getConfig()));

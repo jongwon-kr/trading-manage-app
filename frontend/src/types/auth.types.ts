@@ -2,6 +2,8 @@ export interface User {
   id: string;
   username: string;
   email: string;
+  /** USER | ADMIN (관리자 메뉴 표시) */
+  role?: "USER" | "ADMIN";
 }
 
 export interface LoginRequest {

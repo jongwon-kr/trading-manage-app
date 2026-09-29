@@ -29,6 +29,14 @@ public class JournalApiDto {
     public static class ReasoningDto {
         private String markdown;
         private List<String> images;
+
+        /** 저장용: 에디터 HTML(markdown 필드)을 정화한 사본 (저장형 XSS 방지) */
+        public ReasoningDto sanitized() {
+            ReasoningDto copy = new ReasoningDto();
+            copy.setMarkdown(io.tbill.backendapi.global.utils.HtmlSanitizer.clean(this.markdown));
+            copy.setImages(this.images);
+            return copy;
+        }
     }
 
     /**
@@ -68,7 +76,7 @@ public class JournalApiDto {
             String reasoningJson = null;
             try {
                 if (this.reasoning != null) {
-                    reasoningJson = objectMapper.writeValueAsString(this.reasoning);
+                    reasoningJson = objectMapper.writeValueAsString(this.reasoning.sanitized());
                 }
             } catch (Exception e) {
                 throw new RuntimeException("Reasoning DTO to JSON 변환 실패", e);
@@ -115,7 +123,7 @@ public class JournalApiDto {
             String reasoningJson = null;
             try {
                 if (this.reasoning != null) {
-                    reasoningJson = objectMapper.writeValueAsString(this.reasoning);
+                    reasoningJson = objectMapper.writeValueAsString(this.reasoning.sanitized());
                 }
             } catch (Exception e) {
                 throw new RuntimeException("Reasoning DTO to JSON 변환 실패", e);
