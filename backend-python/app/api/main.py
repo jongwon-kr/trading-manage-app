@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from app.api.routers import health, market
+from app.api.routers import analysis, health, market
 from app.core.errors import MarketDataError
 from app.market.service import get_service
 
@@ -29,13 +29,17 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="tbill market data (internal)", docs_url="/docs", lifespan=lifespan)
 app.include_router(health.router)
 app.include_router(market.router)
+app.include_router(analysis.router)
 
 
 @app.exception_handler(MarketDataError)
 def handle_market_error(_: Request, e: MarketDataError):
     if e.status_code >= 500:
         logger.warning(f"{e.code}: {e}")
-    return JSONResponse(status_code=e.status_code, content={"code": e.code, "message": str(e)})
+    content = {"code": e.code, "message": str(e)}
+    if getattr(e, "errors", None):
+        content["errors"] = e.errors  # 전략 설정 검증 실패: 필드 경로별 오류
+    return JSONResponse(status_code=e.status_code, content=content)
 
 
 @app.exception_handler(RequestValidationError)

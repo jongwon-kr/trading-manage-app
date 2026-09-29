@@ -1,5 +1,6 @@
-// 분석 결과 타입 (Redis analysis:{requestId}, schemaVersion 2 — 원본: backend-python app/analysis/jobs.py)
+// 분석 결과 타입 (Redis analysis:{requestId}, schemaVersion 3 — 원본: backend-python app/analysis/jobs.py)
 import type { MarketCode } from "./market.types";
+import type { ValueUnit } from "./model.types";
 
 export type AnalysisStatus = "PROCESSING" | "RUNNING" | "SUCCESS" | "FAILED";
 export type Signal = "BUY" | "HOLD" | "SELL";
@@ -31,6 +32,36 @@ export interface FactorResult {
   contribution: number;
   raw: Record<string, number | string | null>;
   note: string;
+  /** schemaVersion 3 부터: 계산 근거 (설명·공식·입력값·밴드·가중치 경로) */
+  explain?: FactorExplain;
+}
+
+export interface FactorExplain {
+  description: string;
+  formula: string;
+  rules: string[];
+  params: { key: string; label: string; value: number }[];
+  inputs: { key: string; label: string; unit: ValueUnit; value: number | string | null }[];
+  /** x: 이번 계산의 입력값, y: 그 위치의 밴드 점수 */
+  bands: { name: string; label: string; unit: ValueUnit; xs: number[]; ys: number[]; x: number | null; y: number | null }[];
+  weightPath: {
+    subGroup: string | null;
+    subgroupWeight: number | null;
+    factorWeight: number;
+    /** 종합 점수 안에서 그룹 비중 */
+    groupShare?: number | null;
+    /** 그룹 안에서 이 팩터 비중 */
+    inGroup?: number | null;
+    /** groupShare × inGroup */
+    effective?: number | null;
+  };
+}
+
+/** 분석에 쓴 전략 설정 정보 */
+export interface ConfigInfo {
+  hash: string;
+  isDefault: boolean;
+  name: string | null;
 }
 
 export interface GroupResult {
@@ -82,6 +113,7 @@ export interface StrategyResult extends AnalysisEnvelope {
   warnings: string[];
   dataSources: Record<string, string>;
   summary: string;
+  config?: ConfigInfo;
 }
 
 export interface StrategyRequest {
@@ -167,4 +199,5 @@ export interface BacktestResult extends AnalysisEnvelope {
   trades: BacktestTrade[];
   warnings: string[];
   dataSources: Record<string, string>;
+  config?: ConfigInfo;
 }

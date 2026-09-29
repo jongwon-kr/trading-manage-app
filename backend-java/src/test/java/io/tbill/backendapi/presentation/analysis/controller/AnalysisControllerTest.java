@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.tbill.backendapi.domain.analysis.AnalysisType;
 import io.tbill.backendapi.domain.market.entity.InstrumentMarket;
+import io.tbill.backendapi.infrastructure.client.python.PythonMarketClient;
 import io.tbill.backendapi.infrastructure.kafka.KafkaTopics;
 import io.tbill.backendapi.infrastructure.kafka.dto.AnalysisRequest;
 import io.tbill.backendapi.infrastructure.kafka.service.KafkaProducerService;
@@ -34,13 +35,15 @@ class AnalysisControllerTest {
     private KafkaProducerService kafkaProducerService;
     @Mock
     private AnalysisResultCacheService analysisResultCacheService;
+    @Mock
+    private PythonMarketClient pythonMarketClient;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private AnalysisController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new AnalysisController(kafkaProducerService, analysisResultCacheService, objectMapper);
+        controller = new AnalysisController(kafkaProducerService, analysisResultCacheService, objectMapper, pythonMarketClient);
     }
 
     @Test

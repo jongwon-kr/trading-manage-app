@@ -1,6 +1,6 @@
 """Kafka 분석 요청 스키마 (backend-java infrastructure/kafka/dto/AnalysisRequest.java 와 필드명 일치 필수).
 
-결과(Redis analysis:{requestId})는 app.analysis.jobs 가 camelCase dict(schemaVersion 2)로 만든다.
+결과(Redis analysis:{requestId})는 app.analysis.jobs 가 camelCase dict(schemaVersion 3)로 만든다.
 """
 import json
 from datetime import datetime
@@ -9,7 +9,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3  # 3: 팩터 explain, config 정보 추가
 
 
 class AnalysisType(str, Enum):

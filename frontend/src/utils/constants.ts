@@ -41,6 +41,7 @@ export const API_ENDPOINTS = {
     STRATEGY: "/v1/analysis/strategy",
     BACKTEST: "/v1/analysis/backtest",
     RESULT: (id: string) => `/v1/analysis/result/${id}`,
+    MODEL: "/v1/analysis/model",
   },
 };
 

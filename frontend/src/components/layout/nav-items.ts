@@ -22,6 +22,7 @@ export const NAV_ITEMS: NavItem[] = [
 // 메뉴에 없는 하위 경로의 헤더 제목
 const EXTRA_TITLES: { pattern: string; title: string; subtitle?: string }[] = [
   { pattern: "/market/:market/:symbol", title: "종목 상세", subtitle: "차트·시세·재무 지표" },
+  { pattern: "/analysis/methodology", title: "분석 방법", subtitle: "전략 점수 모델의 지표·밴드·가중치" },
 ];
 
 export function headerTitleFor(pathname: string): { title: string; subtitle?: string } {

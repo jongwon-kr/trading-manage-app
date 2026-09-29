@@ -40,7 +40,7 @@ def test_strategy_success_result_is_camel_case_v2(service, fake_redis, monkeypat
     _stub_market_data(service, monkeypatch)
     AnalysisHandler().handle_analysis_request(_message(analysisType="STRATEGY", symbol="005930", market="KR_STOCK"))
     r = _saved(fake_redis)
-    assert r["status"] == "SUCCESS" and r["schemaVersion"] == 2 and r["requestId"] == "req-1"
+    assert r["status"] == "SUCCESS" and r["schemaVersion"] == 3 and r["requestId"] == "req-1"
     assert r["name"] == "삼성전자" and r["signal"] in ("BUY", "HOLD", "SELL")
     assert {g["key"] for g in r["groups"]} == {"technical", "fundamental", "regime"}
     assert r["risk"]["stopLoss"] < r["risk"]["entry"]

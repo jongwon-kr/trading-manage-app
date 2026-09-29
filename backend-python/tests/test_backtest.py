@@ -103,3 +103,11 @@ def test_no_trades_when_score_never_crosses():
     df = flat_frame()
     eq, trades = run(df, [50.0] * 40)
     assert trades == [] and np.allclose(eq.to_numpy(), 10_000)
+
+
+def test_params_follow_strategy_config_risk():
+    from app.analysis.model.config import parse_config
+    cfg = parse_config({"risk": {"stopAtrStock": 1.5, "target2R": 2.5}})
+    p = BacktestParams.from_dict(Market.KR_STOCK, {}, cfg)
+    assert p.stop_atr == 1.5 and p.take_profit_r == 2.5
+    assert BacktestParams.from_dict(Market.KR_STOCK, {"stopAtr": 3}, cfg).stop_atr == 3  # 요청 값 우선

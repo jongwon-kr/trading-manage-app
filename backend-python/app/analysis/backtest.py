@@ -8,6 +8,8 @@
   · 봉 안 손절/목표: 저가 ≤ 손절이면 min(시가, 손절), 아니면 고가 ≥ 목표이면 max(시가, 목표). 같은 봉에서 둘 다 닿으면 손절 우선(보수적)
   · 손절·목표는 진입 직전 봉 ATR 로 고정
 - 비용: 매수·매도 수수료, 매도 세금(KR), 슬리피지 (bp)
+- 전략 설정(params["config"]): 팩터·가중치·밴드·게이트는 라이브 분석과 같게 적용하고,
+  손절 ATR 배수·목표 R 은 요청에 없으면 설정의 리스크 값(손절 배수, 2차 목표)을 쓴다.
 """
 import math
 from dataclasses import dataclass
@@ -18,12 +20,13 @@ import numpy as np
 import pandas as pd
 
 from app.analysis import indicators as ind
+from app.analysis.model.config import StrategyConfig, config_info, default_config, parse_config
 from app.analysis.schemas import SCHEMA_VERSION, AnalysisRequest
 from app.analysis.scoring.composite import score_series
 from app.analysis.scoring.primitives import group_series
 from app.analysis.scoring.regime import regime_factors
 from app.analysis.scoring.technical import technical_factors
-from app.analysis.scoring.weights import MODEL_VERSION, REGIME_RISK_OFF, STOP_ATR_MULT
+from app.analysis.scoring.weights import MODEL_VERSION
 from app.core.errors import BadRequest, InsufficientData
 from app.market.models import Market
 
@@ -52,13 +55,14 @@ class BacktestParams:
     initial_capital: float = 10_000_000
 
     @classmethod
-    def from_dict(cls, market: Market, p: dict) -> "BacktestParams":
+    def from_dict(cls, market: Market, p: dict, cfg: StrategyConfig | None = None) -> "BacktestParams":
+        cfg = cfg or default_config()
         costs = DEFAULT_COSTS[market]
         out = cls(
             buy_threshold=float(p.get("buyThreshold", 60)),
             sell_threshold=float(p.get("sellThreshold", 45)),
-            stop_atr=float(p.get("stopAtr", STOP_ATR_MULT[market.value])),
-            take_profit_r=float(p.get("takeProfitR", 3.0)),
+            stop_atr=float(p.get("stopAtr", cfg.stop_atr(market.value))),
+            take_profit_r=float(p.get("takeProfitR", cfg.risk.target2_r)),
             fee_bps=float(p.get("feeBps", costs["feeBps"])),
             tax_bps=float(p.get("taxBps", costs["taxBps"])),
             slippage_bps=float(p.get("slippageBps", 5.0)),
@@ -169,7 +173,8 @@ def run_backtest(market: Market, code: str, start: datetime | None, end: datetim
     from app.market.service import get_service
 
     report = progress or (lambda *_: None)
-    params = BacktestParams.from_dict(market, raw_params)
+    cfg = parse_config(raw_params.get("config"))
+    params = BacktestParams.from_dict(market, raw_params, cfg)
     svc = get_service()
     sym = svc.get_symbol(market, code)
     end = end or datetime.now(timezone.utc)
@@ -197,11 +202,14 @@ def run_backtest(market: Market, code: str, start: datetime | None, end: datetim
         if bench_code != idx_code:
             bench_close = _index_close(svc, bench_code)
     regime = regime_factors(market.value, index_close.reindex(df.index).ffill(), INDEX_NAMES.get(idx_code, idx_code),
-                            vix, breadth=None, fear_greed=None)
-    groups = {"technical": technical_factors(df, bench_close), "regime": regime}
-    score = score_series(market.value, groups, df.index)
-    regime_score, _ = group_series(regime, df.index)
-    allow = (regime_score >= REGIME_RISK_OFF) | regime_score.isna()
+                            vix, breadth=None, fear_greed=None, cfg=cfg)
+    groups = {"technical": technical_factors(df, bench_close, cfg), "regime": regime}
+    score = score_series(market.value, groups, df.index, cfg)
+    if cfg.gate.enabled:
+        regime_score, _ = group_series(regime, df.index)
+        allow = (regime_score >= cfg.gate.threshold) | regime_score.isna()
+    else:
+        allow = pd.Series(True, index=df.index)
 
     report(0.7, "시뮬레이션")
     equity, trades = simulate(df, score, allow, params, start_pos, fractional=market == Market.CRYPTO)
@@ -231,6 +239,7 @@ def run_backtest(market: Market, code: str, start: datetime | None, end: datetim
         "warnings": ["기본적 분석은 과거 시점 재무 데이터가 없어 백테스트에서 제외했습니다 (미래 정보 사용 방지).",
                      "시장 폭·심리 지표는 당일 스냅샷만 있어 제외했습니다."],
         "dataSources": {"candles": source, "index": INDEX_NAMES.get(idx_code, idx_code)},
+        "config": config_info(cfg, raw_params.get("presetName")),
     }
 
 
