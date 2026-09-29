@@ -16,6 +16,7 @@ const named = <T extends string>(loader: () => Promise<Record<T, React.Component
 
 const Dashboard = named(() => import("@/pages/Dashboard"), "Dashboard");
 const MarketOverview = named(() => import("@/pages/MarketOverview"), "MarketOverview");
+const Trends = named(() => import("@/pages/Trends"), "Trends");
 const SymbolDetail = named(() => import("@/pages/SymbolDetail"), "SymbolDetail");
 const Analysis = named(() => import("@/pages/Analysis"), "Analysis");
 const Methodology = named(() => import("@/pages/Methodology"), "Methodology");
@@ -52,6 +53,7 @@ const AppContent = () => {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="market" element={<MarketOverview />} />
         <Route path="market/:market/:symbol" element={<SymbolDetail />} />
+        <Route path="trends" element={<Trends />} />
         <Route path="watchlist" element={<Watchlist />} />
         <Route path="analysis" element={<Analysis />} />
         <Route path="analysis/methodology" element={<Methodology />} />

@@ -104,6 +104,30 @@ public class PythonMarketClient {
                 new ParameterizedTypeReference<>() {});
     }
 
+    /** 섹터 로테이션·주도 섹터·업종/테마·코인 카테고리 (구성이 자주 바뀌므로 JSON 그대로) */
+    public JsonNode getTrends(InstrumentMarket market) {
+        return get(uri -> uri.path("/internal/v1/trends").queryParam("market", market).build(),
+                new ParameterizedTypeReference<>() {});
+    }
+
+    /** 업종·테마·섹터 구성 종목. kind: industry|theme|sector */
+    public JsonNode getTrendGroup(InstrumentMarket market, String kind, String groupId) {
+        return get(uri -> uri.path("/internal/v1/trends/groups/{market}/{kind}/{id}").build(market, kind, groupId),
+                new ParameterizedTypeReference<>() {});
+    }
+
+    /** 규칙 기반 시장 브리핑. date(YYYY-MM-DD) 가 없으면 오늘 */
+    public JsonNode getBriefing(InstrumentMarket market, String date) {
+        return get(uri -> uri.path("/internal/v1/briefing").queryParam("market", market)
+                        .queryParamIfPresent("date", Optional.ofNullable(date)).build(),
+                new ParameterizedTypeReference<>() {});
+    }
+
+    public JsonNode getBriefingDates(InstrumentMarket market) {
+        return get(uri -> uri.path("/internal/v1/briefing/dates").queryParam("market", market).build(),
+                new ParameterizedTypeReference<>() {});
+    }
+
     /** 분석 모델 카탈로그(팩터 설명·파라미터·밴드 기본값) + 기본 전략 설정 */
     public JsonNode getAnalysisModel() {
         return get(uri -> uri.path("/internal/v1/analysis/model").build(), new ParameterizedTypeReference<>() {});

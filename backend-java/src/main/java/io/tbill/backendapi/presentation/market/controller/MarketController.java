@@ -91,4 +91,34 @@ public class MarketController {
     ) {
         return ResponseEntity.ok(marketService.getMovers(market, limit));
     }
+
+    @Operation(summary = "시장 동향",
+            description = "섹터 ETF 기반 로테이션(주도·약화·소외·개선)과 1D/1W/1M/3M 수익률, 오늘의 업종·테마(KR), 코인 카테고리(CRYPTO)")
+    @GetMapping("/trends")
+    public ResponseEntity<JsonNode> getTrends(@RequestParam InstrumentMarket market) {
+        return ResponseEntity.ok(marketService.getTrends(market));
+    }
+
+    @Operation(summary = "업종·테마·섹터 구성 종목", description = "kind: industry·theme(KR, 네이버 번호) · sector(US, 섹터 키)")
+    @GetMapping("/trends/groups/{market}/{kind}/{groupId}")
+    public ResponseEntity<JsonNode> getTrendGroup(@PathVariable InstrumentMarket market, @PathVariable String kind,
+                                                  @PathVariable String groupId) {
+        return ResponseEntity.ok(marketService.getTrendGroup(market, kind, groupId));
+    }
+
+    @Operation(summary = "시장 브리핑", description = "규칙 기반 문장과 근거 수치. date(YYYY-MM-DD) 생략 시 오늘 (최근 30일 스냅샷)")
+    @GetMapping("/briefing")
+    public ResponseEntity<JsonNode> getBriefing(
+            @RequestParam InstrumentMarket market,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(
+                    iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate date
+    ) {
+        return ResponseEntity.ok(marketService.getBriefing(market, date));
+    }
+
+    @Operation(summary = "브리핑 날짜 목록", description = "최근 14일")
+    @GetMapping("/briefing/dates")
+    public ResponseEntity<JsonNode> getBriefingDates(@RequestParam InstrumentMarket market) {
+        return ResponseEntity.ok(marketService.getBriefingDates(market));
+    }
 }

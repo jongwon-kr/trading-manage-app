@@ -1,0 +1,64 @@
+{
+ "stockListSortType": "INDUSTRY",
+ "groups": [
+  {
+   "no": 282,
+   "name": "전자장비와기기",
+   "totalCount": 105,
+   "changeRate": "1.85",
+   "riseCount": 35,
+   "fallCount": 57,
+   "steadyCount": 13
+  },
+  {
+   "no": 275,
+   "name": "담배",
+   "totalCount": 1,
+   "changeRate": "0.68",
+   "riseCount": 1,
+   "fallCount": 0,
+   "steadyCount": 0
+  },
+  {
+   "no": 269,
+   "name": "디스플레이장비및부품",
+   "totalCount": 71,
+   "changeRate": "0.34",
+   "riseCount": 21,
+   "fallCount": 44,
+   "steadyCount": 6
+  },
+  {
+   "no": 278,
+   "name": "반도체와반도체장비",
+   "totalCount": 171,
+   "changeRate": "-0.04",
+   "riseCount": 107,
+   "fallCount": 54,
+   "steadyCount": 10
+  },
+  {
+   "no": 281,
+   "name": "건강관리장비와용품",
+   "totalCount": 104,
+   "changeRate": "-0.04",
+   "riseCount": 26,
+   "fallCount": 61,
+   "steadyCount": 17
+  },
+  {
+   "no": 331,
+   "name": "복합유틸리티",
+   "totalCount": 1,
+   "changeRate": "-0.13",
+   "riseCount": 0,
+   "fallCount": 1,
+   "steadyCount": 0
+  }
+ ],
+ "totalCount": 79,
+ "page": 1,
+ "pageSize": 100,
+ "localOpenTimeDesc": "",
+ "marketStatus": "OPEN"
+}

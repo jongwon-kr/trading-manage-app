@@ -31,6 +31,10 @@ export const API_ENDPOINTS = {
     FUNDAMENTALS: "/v1/market/fundamentals",
     OVERVIEW: "/v1/market/overview",
     MOVERS: "/v1/market/movers",
+    TRENDS: "/v1/market/trends",
+    TREND_GROUP: (market: string, kind: string, id: string) => `/v1/market/trends/groups/${market}/${kind}/${id}`,
+    BRIEFING: "/v1/market/briefing",
+    BRIEFING_DATES: "/v1/market/briefing/dates",
   },
   WATCHLIST: {
     BASE: "/v1/watchlist",
