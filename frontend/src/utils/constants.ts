@@ -43,6 +43,11 @@ export const API_ENDPOINTS = {
     RESULT: (id: string) => `/v1/analysis/result/${id}`,
     MODEL: "/v1/analysis/model",
   },
+  STRATEGIES: {
+    LIST: "/v1/strategies",
+    DETAIL: (id: number) => `/v1/strategies/${id}`,
+    DUPLICATE: (id: number) => `/v1/strategies/${id}/duplicate`,
+  },
 };
 
 export const TOKEN_KEY = "auth_token";

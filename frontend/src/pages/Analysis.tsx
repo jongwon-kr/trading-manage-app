@@ -11,6 +11,8 @@ import { PriceChart, type PriceLineSpec } from "@/components/chart/PriceChart";
 import { DEFAULT_INDICATORS } from "@/components/chart/indicator-settings";
 import { StrategyReport } from "@/components/analysis/StrategyReport";
 import { SymbolSearchDialog } from "@/components/market/SymbolSearchDialog";
+import { StrategyPresetSelect } from "@/components/strategy/StrategyPresetSelect";
+import { useSelectedPreset } from "@/hooks/useSelectedPreset";
 import { useGetCandlesQuery, useGetOverviewQuery, useGetSymbolQuery } from "@/api/market.api";
 import { useStrategyJob } from "@/hooks/useStrategyJob";
 import { LINE_COLORS } from "@/lib/chart-theme";
@@ -61,7 +63,8 @@ export function Analysis() {
     { market: market ?? "KR_STOCK", symbol: symbol ?? "", interval: "1d", limit: 250 },
     { skip: !market || !symbol }
   );
-  const { run, busy, job } = useStrategyJob(market, symbol, { autoRun: true });
+  const preset = useSelectedPreset();
+  const { run, busy, job } = useStrategyJob(market, symbol, { autoRun: !preset.loading, presetId: preset.presetId });
   const risk = job.result?.risk;
   const priceLines = useMemo<PriceLineSpec[]>(
     () =>
@@ -100,6 +103,10 @@ export function Analysis() {
               <Search className="h-4 w-4" />
               {symbolInfo ? `${symbolInfo.name} (${symbolInfo.code})` : "종목 선택"}
             </Button>
+          </div>
+          <div className="space-y-1.5">
+            <Label>분석 방법</Label>
+            <StrategyPresetSelect value={preset.value} onChange={preset.setValue} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="equity">계좌 금액 (선택)</Label>

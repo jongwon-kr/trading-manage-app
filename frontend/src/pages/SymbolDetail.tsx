@@ -7,6 +7,8 @@ import { PriceChart, type LiveTick, type PriceLineSpec } from "@/components/char
 import { StrategyReport } from "@/components/analysis/StrategyReport";
 import { StrategySummaryCard } from "@/components/analysis/StrategySummaryCard";
 import { useStrategyJob } from "@/hooks/useStrategyJob";
+import { StrategyPresetSelect } from "@/components/strategy/StrategyPresetSelect";
+import { useSelectedPreset } from "@/hooks/useSelectedPreset";
 import { LINE_COLORS } from "@/lib/chart-theme";
 import { DEFAULT_INDICATORS, type IndicatorSettings } from "@/components/chart/indicator-settings";
 import { FundamentalsCard } from "@/components/market/FundamentalsCard";
@@ -74,7 +76,8 @@ function SymbolDetailContent({ market, code }: { market: MarketCode; code: strin
   const quote = tick ? { ...tick, name: tick.name ?? quoteQuery.data?.name ?? null } : quoteQuery.data;
 
   // 전략 분석 (페이지 진입 시 자동 1회, 결과는 Python 에서 10분 캐시)
-  const strategy = useStrategyJob(market, code, { autoRun: true });
+  const preset = useSelectedPreset();
+  const strategy = useStrategyJob(market, code, { autoRun: !preset.loading, presetId: preset.presetId });
   const risk = strategy.job.result?.risk;
   const priceLines = useMemo<PriceLineSpec[]>(
     () =>
@@ -138,6 +141,9 @@ function SymbolDetailContent({ market, code }: { market: MarketCode; code: strin
         </Card>
 
         <div className="space-y-4 lg:col-span-4">
+          <div className="flex justify-end">
+            <StrategyPresetSelect value={preset.value} onChange={preset.setValue} className="w-44" />
+          </div>
           <StrategySummaryCard job={strategy.job} busy={strategy.busy} onRun={() => void strategy.run()} />
           {isStock && (
             <FundamentalsCard

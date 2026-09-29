@@ -1,6 +1,6 @@
 // 분석 결과 타입 (Redis analysis:{requestId}, schemaVersion 3 — 원본: backend-python app/analysis/jobs.py)
 import type { MarketCode } from "./market.types";
-import type { ValueUnit } from "./model.types";
+import type { StrategyConfig, ValueUnit } from "./model.types";
 
 export type AnalysisStatus = "PROCESSING" | "RUNNING" | "SUCCESS" | "FAILED";
 export type Signal = "BUY" | "HOLD" | "SELL";
@@ -122,6 +122,10 @@ export interface StrategyRequest {
   interval?: string;
   accountEquity?: number;
   riskPct?: number;
+  /** 내 전략 (config 와 함께 보낼 수 없음) */
+  presetId?: number;
+  /** 저장 전 설정 미리보기 */
+  config?: StrategyConfig;
 }
 
 export interface RequestIdResponse {
@@ -148,6 +152,8 @@ export interface BacktestRequest extends Partial<BacktestParams> {
   /** YYYY-MM-DD */
   from?: string;
   to?: string;
+  presetId?: number;
+  config?: StrategyConfig;
 }
 
 export interface BacktestMetrics {

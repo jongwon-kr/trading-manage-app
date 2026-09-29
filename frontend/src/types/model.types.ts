@@ -74,3 +74,23 @@ export interface AnalysisModel {
   defaultConfig: StrategyConfig;
   defaultHash: string;
 }
+
+/** 내 전략 (backend-java /api/v1/strategies) */
+export interface StrategyPreset {
+  id: number;
+  name: string;
+  description: string | null;
+  /** 검증·정규화된 전체 설정 */
+  config: StrategyConfig;
+  configHash: string;
+  forkedFromPostId: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SavePresetRequest {
+  name: string;
+  description?: string | null;
+  /** 생략하면 기본 모델 설정 */
+  config?: StrategyConfig | null;
+}
