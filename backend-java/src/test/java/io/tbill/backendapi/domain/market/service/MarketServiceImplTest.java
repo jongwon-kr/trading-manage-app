@@ -72,4 +72,12 @@ class MarketServiceImplTest {
                 .isInstanceOf(MarketException.class);
         verifyNoInteractions(pythonMarketClient);
     }
+
+    @Test
+    @DisplayName("동향 그룹 kind 는 industry·theme·sector 만 허용 (Python 호출 전 400)")
+    void trendGroupKind() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> marketService.getTrendGroup(InstrumentMarket.KR_STOCK, "etc", "1"))
+                .isInstanceOf(io.tbill.backendapi.global.exception.MarketException.class);
+        verifyNoInteractions(pythonMarketClient);
+    }
 }

@@ -1,107 +1,54 @@
 package io.tbill.backendapi.domain.content.dto;
 
-import io.tbill.backendapi.domain.content.entity.Content;
+import com.fasterxml.jackson.databind.JsonNode;
+import io.tbill.backendapi.domain.content.entity.AttachmentType;
 import io.tbill.backendapi.domain.content.entity.ContentCategory;
-import lombok.Builder;
-import lombok.Getter;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
+/**
+ * 커뮤니티 서비스 계층 DTO. 조회 결과 record 는 그대로 응답 본문으로 쓴다 (작성자는 이메일 대신 username).
+ */
 public class ContentDto {
 
-    /**
-     * 게시글 생성 Command (Service -> Repo)
-     */
-    @Getter
-    public static class CreateCommand {
-        private final ContentCategory category;
-        private final String title;
-        private final String contentBody;
-        private final String authorEmail;
-
-        @Builder
-        public CreateCommand(ContentCategory category, String title, String contentBody, String authorEmail) {
-            this.category = category;
-            this.title = title;
-            this.contentBody = contentBody;
-            this.authorEmail = authorEmail;
-        }
-
-        public Content toEntity() {
-            return Content.builder()
-                    .category(this.category)
-                    .title(this.title)
-                    .content(this.contentBody)
-                    .authorEmail(this.authorEmail)
-                    .build();
-        }
+    public enum SortKey {
+        LATEST, LIKES, COMMENTS, IMPORTS, VIEWS,
+        /** 전략 공유: 백테스트 총수익률 높은 순 */
+        RETURN,
+        /** 전략 공유: 최대 낙폭이 작은 순 */
+        MDD
     }
 
-    /**
-     * (목록용) 게시글 단순 응답 (Service -> Controller)
-     * (댓글 미포함)
-     */
-    @Getter
-    public static class SimpleResponse {
-        private final Long id;
-        private final ContentCategory category;
-        private final String title;
-        private final String authorEmail;
-        private final Integer viewCount;
-        private final LocalDateTime createdAt;
+    /** admin: 공지(NOTICE) 작성 허용 */
+    public record CreateCommand(String authorEmail, ContentCategory category, String title, String body, boolean admin) {}
 
-        public SimpleResponse(Content content) {
-            this.id = content.getId();
-            this.category = content.getCategory();
-            this.title = content.getTitle();
-            this.authorEmail = content.getAuthorEmail();
-            this.viewCount = content.getViewCount();
-            this.createdAt = content.getCreatedAt();
-        }
+    public record UpdateCommand(Long id, String authorEmail, String title, String body) {}
 
-        public static SimpleResponse from(Content content) {
-            return new SimpleResponse(content);
-        }
-    }
+    /** 공유 글 (매매일지·전략). attachment 는 스냅샷 JSON */
+    public record AttachmentPostCommand(String authorEmail, ContentCategory category, String title, String body,
+                                        AttachmentType attachmentType, JsonNode attachment, String symbolKey,
+                                        Double metricReturn, Double metricMdd) {}
 
-    /**
-     * (상세) 게시글 상세 응답 (Service -> Controller)
-     * (댓글 목록 포함)
-     */
-    @Getter
-    public static class DetailResponse {
-        private final Long id;
-        private final ContentCategory category;
-        private final String title;
-        private final String contentBody;
-        private final String authorEmail;
-        private final Integer viewCount;
-        private final LocalDateTime createdAt;
-        private final LocalDateTime updatedAt;
-        private final List<CommentDto.Info> comments; // (중요) 댓글 목록
+    /** authorName: 특정 작성자 글만, following: 내가 팔로우한 사람 글만 */
+    public record SearchCondition(String viewerEmail, ContentCategory category, String keyword, String symbolKey,
+                                  String authorName, boolean following, SortKey sort, int page, int size) {}
 
-        public DetailResponse(Content content) {
-            this.id = content.getId();
-            this.category = content.getCategory();
-            this.title = content.getTitle();
-            this.contentBody = content.getContent();
-            this.authorEmail = content.getAuthorEmail();
-            this.viewCount = content.getViewCount();
-            this.createdAt = content.getCreatedAt();
-            this.updatedAt = content.getUpdatedAt();
+    public record ListItem(Long id, ContentCategory category, String title, String excerpt, String authorName,
+                           boolean mine, boolean liked, int viewCount, int likeCount, int commentCount, int importCount,
+                           AttachmentType attachmentType, JsonNode attachmentSummary, String symbolKey, boolean hidden,
+                           LocalDateTime createdAt) {}
 
-            // (중요) Entity List -> DTO List 변환
-            // (소프트 삭제) 삭제되지 않은 댓글만 필터링
-            this.comments = content.getComments().stream()
-                    .filter(comment -> !comment.getIsDeleted())
-                    .map(CommentDto.Info::from)
-                    .collect(Collectors.toList());
-        }
+    public record Detail(Long id, ContentCategory category, String title, String body, String authorName, boolean mine,
+                         boolean liked, int viewCount, int likeCount, int commentCount, int importCount,
+                         AttachmentType attachmentType, JsonNode attachment, String symbolKey, boolean hidden,
+                         List<CommentInfo> comments, LocalDateTime createdAt, LocalDateTime updatedAt) {}
 
-        public static DetailResponse from(Content content) {
-            return new DetailResponse(content);
-        }
-    }
+    public record CommentInfo(Long id, Long contentId, String authorName, String comment, boolean mine, boolean hidden,
+                              LocalDateTime createdAt) {}
+
+    public record LikeResult(boolean liked, int likeCount) {}
+
+    public record PageResult<T>(List<T> content, int pageNumber, int pageSize, long totalElements, int totalPages,
+                                boolean isLast) {}
 }

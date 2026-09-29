@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Loader2, Play, Search } from "lucide-react";
 import type { SeriesMarker, Time, UTCTimestamp } from "lightweight-charts";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,9 +15,12 @@ import { PriceChart } from "@/components/chart/PriceChart";
 import { DEFAULT_INDICATORS } from "@/components/chart/indicator-settings";
 import { StrategyWarnings } from "@/components/analysis/StrategyReport";
 import { SymbolSearchDialog } from "@/components/market/SymbolSearchDialog";
+import { StrategyPresetSelect } from "@/components/strategy/StrategyPresetSelect";
+import { useSelectedPreset } from "@/hooks/useSelectedPreset";
 import { useGetCandlesQuery, useGetSymbolQuery } from "@/api/market.api";
 import { useRequestBacktestMutation } from "@/api/strategy.api";
 import { useAnalysisJob } from "@/hooks/useAnalysisJob";
+import { saveBacktest } from "@/lib/backtest-history";
 import { chartPalette } from "@/lib/chart-theme";
 import { changeColorClass, formatMoney, formatNumber, formatPercent } from "@/lib/format";
 import { marketSlug, parseMarketParam, symbolPath } from "@/lib/market";
@@ -26,7 +30,9 @@ const EXIT_LABELS = { SIGNAL: "신호", STOP: "손절", TARGET: "목표", END: "
 
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 
-function MetricsTable({ strategy, hold }: { strategy: BacktestMetrics; hold: BacktestMetrics }) {
+function MetricsTable({ strategy, hold, base, strategyLabel = "전략" }: {
+  strategy: BacktestMetrics; hold: BacktestMetrics; base?: BacktestMetrics; strategyLabel?: string;
+}) {
   const rows: [string, (m: BacktestMetrics) => string, (m: BacktestMetrics) => number | null][] = [
     ["총 수익률", (m) => formatPercent(m.totalReturn, 1), (m) => m.totalReturn],
     ["연환산 수익률(CAGR)", (m) => formatPercent(m.cagr, 1), (m) => m.cagr],
@@ -44,8 +50,9 @@ function MetricsTable({ strategy, hold }: { strategy: BacktestMetrics; hold: Bac
       <TableHeader>
         <TableRow>
           <TableHead>지표</TableHead>
-          <TableHead className="text-right">전략</TableHead>
-          <TableHead className="text-right">단순 보유</TableHead>
+          <TableHead className="whitespace-nowrap text-right">{strategyLabel}</TableHead>
+          {base && <TableHead className="whitespace-nowrap text-right">기본 모델</TableHead>}
+          <TableHead className="whitespace-nowrap text-right">단순 보유</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -55,6 +62,11 @@ function MetricsTable({ strategy, hold }: { strategy: BacktestMetrics; hold: Bac
             <TableCell className={`text-right tabular-nums ${colored(strategy) != null ? changeColorClass(colored(strategy)) : ""}`}>
               {fmt(strategy)}
             </TableCell>
+            {base && (
+              <TableCell className={`text-right tabular-nums ${colored(base) != null ? changeColorClass(colored(base)) : ""}`}>
+                {fmt(base)}
+              </TableCell>
+            )}
             <TableCell className={`text-right tabular-nums ${colored(hold) != null ? changeColorClass(colored(hold)) : ""}`}>
               {label === "거래 수" || label.startsWith("승률") || label.startsWith("손익비") || label.startsWith("평균") ? "-" : fmt(hold)}
             </TableCell>
@@ -65,7 +77,7 @@ function MetricsTable({ strategy, hold }: { strategy: BacktestMetrics; hold: Bac
   );
 }
 
-function BacktestResultView({ result }: { result: BacktestResult }) {
+function BacktestResultView({ result, baseline }: { result: BacktestResult; baseline?: BacktestResult }) {
   const { data: candles } = useGetCandlesQuery({ market: result.market, symbol: result.symbol, interval: "1d", limit: 2000 });
   const c = chartPalette(false);
   const fromTs = Date.parse(result.from) / 1000;
@@ -81,6 +93,7 @@ function BacktestResultView({ result }: { result: BacktestResult }) {
       .sort((a, b) => (a.time as number) - (b.time as number));
   }, [result.trades, c.up, c.down]);
   const m = result.metrics;
+  const label = result.config && !result.config.isDefault ? result.config.name ?? "사용자 설정" : "기본 모델";
 
   return (
     <div className="space-y-4">
@@ -89,8 +102,11 @@ function BacktestResultView({ result }: { result: BacktestResult }) {
           ["총 수익률", formatPercent(m.totalReturn, 1), m.totalReturn],
           ["CAGR", formatPercent(m.cagr, 1), m.cagr],
           ["최대 낙폭", formatPercent(m.mdd, 1), null],
-          ["단순 보유 대비", formatPercent(m.totalReturn - result.benchmarkMetrics.totalReturn, 1),
-            m.totalReturn - result.benchmarkMetrics.totalReturn],
+          baseline
+            ? ["기본 모델 대비", formatPercent(m.totalReturn - baseline.metrics.totalReturn, 1),
+               m.totalReturn - baseline.metrics.totalReturn]
+            : ["단순 보유 대비", formatPercent(m.totalReturn - result.benchmarkMetrics.totalReturn, 1),
+               m.totalReturn - result.benchmarkMetrics.totalReturn],
         ].map(([label, value, color]) => (
           <Card key={label as string}>
             <CardContent className="p-4">
@@ -110,10 +126,11 @@ function BacktestResultView({ result }: { result: BacktestResult }) {
             <CardTitle className="text-base">자산 곡선</CardTitle>
             <p className="text-xs text-muted-foreground">
               {result.name} · {result.from} ~ {result.to} · 초기 자본 {formatMoney(result.params.initialCapital, result.market)}
+              {" "}· 전략: {label}
             </p>
           </CardHeader>
           <CardContent>
-            <EquityChart points={result.equityCurve} />
+            <EquityChart points={result.equityCurve} compare={baseline?.equityCurve} />
           </CardContent>
         </Card>
         <Card className="lg:col-span-2">
@@ -121,7 +138,8 @@ function BacktestResultView({ result }: { result: BacktestResult }) {
             <CardTitle className="text-base">성과 지표</CardTitle>
           </CardHeader>
           <CardContent className="px-2">
-            <MetricsTable strategy={m} hold={result.benchmarkMetrics} />
+            <MetricsTable strategy={m} hold={result.benchmarkMetrics} base={baseline?.metrics}
+                          strategyLabel={baseline ? label : "전략"} />
           </CardContent>
         </Card>
       </div>
@@ -198,6 +216,15 @@ export function Backtest() {
   const [capital, setCapital] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
+  const [baseRequestId, setBaseRequestId] = useState<string | null>(null);
+  const preset = useSelectedPreset();
+  const [compare, setCompare] = useState(params.get("compare") === "1");
+  // 전략 편집기에서 넘어온 경우 (?preset=ID&compare=1) 그 전략을 선택
+  const urlPreset = params.get("preset");
+  useEffect(() => {
+    if (urlPreset) preset.setValue(Number(urlPreset));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- URL 값이 바뀔 때만
+  }, [urlPreset]);
 
   const { data: symbolInfo } = useGetSymbolQuery(
     { market: market ?? "KR_STOCK", code: symbol ?? "" },
@@ -205,7 +232,16 @@ export function Backtest() {
   );
   const [request, { isLoading: requesting }] = useRequestBacktestMutation();
   const job = useAnalysisJob<BacktestResult>(requestId, { timeoutMs: 180_000 });
-  const busy = requesting || job.status === "PROCESSING";
+  const baseJob = useAnalysisJob<BacktestResult>(baseRequestId, { timeoutMs: 180_000 });
+  const comparing = compare && preset.presetId != null;
+  // 완료된 결과를 기록 → 전략 공유 시 성과로 첨부
+  const done = job.result;
+  useEffect(() => {
+    if (!done?.config || !requestId) return;
+    saveBacktest({ requestId, configHash: done.config.hash, presetName: done.config.name, symbol: done.symbol,
+      name: done.name, from: done.from, to: done.to, totalReturn: done.metrics.totalReturn, mdd: done.metrics.mdd, at: Date.now() });
+  }, [done, requestId]);
+  const busy = requesting || job.status === "PROCESSING" || (comparing && baseJob.status === "PROCESSING");
 
   const submit = async () => {
     if (!market || !symbol) return;
@@ -229,8 +265,13 @@ export function Backtest() {
     }
     setFormError(null);
     try {
-      const res = await request(body).unwrap();
+      // 비교: 같은 조건으로 기본 모델도 함께 실행
+      const [res, base] = await Promise.all([
+        request({ ...body, ...(preset.presetId != null ? { presetId: preset.presetId } : {}) }).unwrap(),
+        comparing ? request(body).unwrap() : Promise.resolve(null),
+      ]);
       setRequestId(res.requestId);
+      setBaseRequestId(base?.requestId ?? null);
     } catch (e) {
       setFormError((e as { message?: string }).message ?? "백테스트 요청에 실패했습니다.");
     }
@@ -260,6 +301,16 @@ export function Backtest() {
               {symbolInfo ? `${symbolInfo.name} (${symbolInfo.code})` : "종목 선택"}
             </Button>
           </div>
+          <div className="space-y-1.5">
+            <Label>분석 방법</Label>
+            <StrategyPresetSelect value={preset.value} onChange={preset.setValue} />
+          </div>
+          {preset.presetId != null && (
+            <label className="flex h-9 items-center gap-2 text-sm">
+              <Checkbox checked={compare} onCheckedChange={(v) => setCompare(v === true)} />
+              기본 모델과 비교
+            </label>
+          )}
           {field("from", "시작일", from, setFrom, { type: "date", className: "w-40" })}
           {field("to", "종료일", to, setTo, { type: "date", className: "w-40" })}
           {field("buy", "진입 점수 ≥", buy, setBuy, { inputMode: "decimal" })}
@@ -291,7 +342,12 @@ export function Backtest() {
         </Card>
       )}
       {(job.status === "FAILED" || job.status === "TIMEOUT") && <p className="text-sm text-destructive">{job.error}</p>}
-      {job.result && <BacktestResultView result={job.result} />}
+      {(baseJob.status === "FAILED" || baseJob.status === "TIMEOUT") && (
+        <p className="text-sm text-destructive">기본 모델 비교 실패: {baseJob.error}</p>
+      )}
+      {job.result && (!baseRequestId || baseJob.status !== "PROCESSING") && (
+        <BacktestResultView result={job.result} baseline={baseRequestId ? baseJob.result ?? undefined : undefined} />
+      )}
       {job.status === "IDLE" && (
         <p className="py-10 text-center text-sm text-muted-foreground">종목과 기간을 정하고 백테스트를 실행하세요.</p>
       )}

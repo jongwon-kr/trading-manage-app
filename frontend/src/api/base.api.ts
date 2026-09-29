@@ -5,6 +5,9 @@ import axiosInstance from "./axios";
 export interface ApiError {
   status?: number;
   message: string;
+  code?: string;
+  /** 필드별 오류 (전략 설정 검증 실패 시) */
+  errors?: { path: string; msg: string }[];
 }
 
 /**
@@ -22,14 +25,14 @@ const axiosBaseQuery =
       const res = await axiosInstance({ url, method, params, data });
       return { data: res.data };
     } catch (e) {
-      const err = e as Error & { status?: number };
-      return { error: { status: err.status, message: err.message } };
+      const err = e as Error & Omit<ApiError, "message">;
+      return { error: { status: err.status, message: err.message, code: err.code, errors: err.errors } };
     }
   };
 
 export const baseApi = createApi({
   reducerPath: "api",
   baseQuery: axiosBaseQuery(),
-  tagTypes: ["Watchlist"],
+  tagTypes: ["Watchlist", "Preset", "Content", "Notification", "Profile", "Report"],
   endpoints: () => ({}),
 });

@@ -1,12 +1,14 @@
-"""분석 작업: 시세 데이터를 모아 점수 모델을 실행하고 결과 dict(camelCase, schemaVersion 2)를 만든다.
+"""분석 작업: 시세 데이터를 모아 점수 모델을 실행하고 결과 dict(camelCase, schemaVersion 3)를 만든다.
 
 worker(Kafka) 와 시세 API(overview regime)가 공유한다.
+요청 옵션 params["config"] 는 사용자 전략 설정(부분 설정 가능, app/analysis/model/config.py)이다.
 """
 import logging
 from datetime import datetime, timezone
 
 import pandas as pd
 
+from app.analysis.model.config import StrategyConfig, config_hash, config_info, default_config, parse_config
 from app.analysis.schemas import SCHEMA_VERSION
 from app.analysis.scoring.composite import SIGNAL_LABELS, evaluate
 from app.analysis.scoring.fundamental import fundamental_factors
@@ -71,12 +73,13 @@ def _vix(svc: MarketDataService, market: Market) -> pd.Series | None:
         return None
 
 
-def build_regime(svc: MarketDataService, market: Market, sym: SymbolInfo | None = None) -> list[Factor]:
+def build_regime(svc: MarketDataService, market: Market, sym: SymbolInfo | None = None,
+                 cfg: StrategyConfig | None = None) -> list[Factor]:
     code = regime_index_code(market, sym)
     breadth = svc.kr_breadth() if market == Market.KR_STOCK else svc.crypto_breadth() if market == Market.CRYPTO else None
     fear_greed = svc.fear_greed() if market == Market.CRYPTO else None
     return regime_factors(market.value, _index_close(svc, code), INDEX_NAMES.get(code, code), _vix(svc, market),
-                          breadth=breadth, fear_greed=fear_greed)
+                          breadth=breadth, fear_greed=fear_greed, cfg=cfg)
 
 
 def _daily(svc: MarketDataService, sym: SymbolInfo) -> tuple[pd.DataFrame, str]:
@@ -95,6 +98,7 @@ def run_strategy(market: Market, code: str, params: dict | None = None, include:
     interval = params.get("interval", "1d")
     if interval != "1d":
         raise BadRequest("전략 분석은 일봉(1d) 기준만 지원합니다.")
+    cfg = parse_config(params.get("config"))
     df, candle_source = _daily(svc, sym)
     as_of = df.index[-1].strftime("%Y-%m-%d")
 
@@ -113,7 +117,7 @@ def run_strategy(market: Market, code: str, params: dict | None = None, include:
                 except Exception as e:
                     warnings.append("벤치마크 데이터를 가져오지 못해 상대강도를 제외했습니다.")
                     logger.warning(f"벤치마크 조회 실패: {bench}: {e}")
-            groups["technical"] = technical_factors(df, bench_close)
+            groups["technical"] = technical_factors(df, bench_close, cfg)
 
         if "fundamental" in include and market != Market.CRYPTO:
             fundamentals = None
@@ -123,17 +127,17 @@ def run_strategy(market: Market, code: str, params: dict | None = None, include:
             except Exception as e:
                 warnings.append("재무 데이터를 가져오지 못해 기본적 분석을 제외했습니다.")
                 logger.warning(f"재무 조회 실패: {sym.key}: {e}")
-            groups["fundamental"] = fundamental_factors(fundamentals)
+            groups["fundamental"] = fundamental_factors(fundamentals, cfg)
 
         if "regime" in include:
             try:
-                groups["regime"] = build_regime(svc, market, sym)
+                groups["regime"] = build_regime(svc, market, sym, cfg)
             except Exception as e:
                 warnings.append("시장 국면 데이터를 가져오지 못해 제외했습니다.")
                 logger.warning(f"시장 국면 조회 실패: {market.value}: {e}")
 
-        ev = evaluate(market.value, groups)
-        risk = risk_plan(market.value, df, params.get("accountEquity"), params.get("riskPct"))
+        ev = evaluate(market.value, groups, cfg)
+        risk = risk_plan(market.value, df, params.get("accountEquity"), params.get("riskPct"), cfg)
         if sym.warning:
             warnings.append("업비트 투자유의·주의 종목입니다.")
         return {
@@ -144,12 +148,14 @@ def run_strategy(market: Market, code: str, params: dict | None = None, include:
             "confidence": ev["confidence"], "groups": ev["groups"], "risk": risk,
             "warnings": ev["warnings"] + risk.pop("warnings") + warnings,
             "dataSources": sources, "summary": summarize(sym.name, ev),
+            "config": config_info(cfg, params.get("presetName")),
         }
 
     # 계정 규모(수량 계산)가 들어간 요청은 개인화 결과라 캐시하지 않는다
     if params.get("accountEquity"):
         return compute()
-    key = f"strategy:{market.value}:{sym.code}:{'-'.join(include)}:{as_of}:{MODEL_VERSION}:{params.get('riskPct')}"
+    key = (f"strategy:{market.value}:{sym.code}:{'-'.join(include)}:{as_of}:{MODEL_VERSION}:{config_hash(cfg)}:"
+           f"{params.get('riskPct')}:{params.get('presetName') or ''}")
     return get_or_load(key, STRATEGY_CACHE_TTL, compute)
 
 
@@ -168,6 +174,7 @@ def run_market_trend(market: Market) -> dict:
         "confidence": ev["confidence"], "groups": ev["groups"], "risk": None,
         "warnings": ev["warnings"], "dataSources": {"index": name},
         "summary": summarize(f"{name} 시장", ev),
+        "config": config_info(default_config()),
     }
 
 

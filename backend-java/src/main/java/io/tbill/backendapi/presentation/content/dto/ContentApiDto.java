@@ -2,113 +2,49 @@ package io.tbill.backendapi.presentation.content.dto;
 
 import io.tbill.backendapi.domain.content.dto.ContentDto;
 import io.tbill.backendapi.domain.content.entity.ContentCategory;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import org.springframework.data.domain.Page;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
-
+/**
+ * 커뮤니티 요청 본문. 응답은 도메인 조회 record(ContentDto.ListItem·Detail 등)를 그대로 쓴다.
+ */
 public class ContentApiDto {
 
-    /**
-     * [POST] /api/contents (게시글 생성 요청)
-     * [PUT] /api/contents/{contentId} (게시글 수정 요청)
-     */
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    public static class CreateOrUpdateRequest {
-        // (Validation 추가 필요: @NotNull, @NotBlank, @Size)
-        private ContentCategory category;
-        private String title;
-        private String content;
-
-        // (Controller) Presentation DTO -> Domain DTO(Command)
-        public ContentDto.CreateCommand toCommand(String authorEmail) {
-            return ContentDto.CreateCommand.builder()
-                    .category(this.category)
-                    .title(this.title)
-                    .contentBody(this.content)
-                    .authorEmail(authorEmail) // (중요) Controller에서 주입
-                    .build();
+    public record CreateRequest(
+            @NotNull(message = "게시판을 선택하세요.") ContentCategory category,
+            @NotBlank(message = "제목은 필수입니다.") @Size(max = 200, message = "제목은 200자 이하여야 합니다.") String title,
+            String body
+    ) {
+        public ContentDto.CreateCommand toCommand(String authorEmail, boolean admin) {
+            return new ContentDto.CreateCommand(authorEmail, category, title, body, admin);
         }
     }
 
-    /**
-     * [GET] /api/contents (게시글 목록 응답)
-     */
-    @Getter
-    public static class ListResponse {
-        private final Long id;
-        private final ContentCategory category;
-        private final String title;
-        private final String authorEmail;
-        private final Integer viewCount;
-        private final LocalDateTime createdAt;
-
-        public ListResponse(ContentDto.SimpleResponse simple) {
-            this.id = simple.getId();
-            this.category = simple.getCategory();
-            this.title = simple.getTitle();
-            this.authorEmail = simple.getAuthorEmail();
-            this.viewCount = simple.getViewCount();
-            this.createdAt = simple.getCreatedAt();
+    public record UpdateRequest(
+            @NotBlank(message = "제목은 필수입니다.") @Size(max = 200, message = "제목은 200자 이하여야 합니다.") String title,
+            String body
+    ) {
+        public ContentDto.UpdateCommand toCommand(Long id, String authorEmail) {
+            return new ContentDto.UpdateCommand(id, authorEmail, title, body);
         }
     }
 
-    /**
-     * (Helper) Page<DTO>를 API 응답 형식으로 변환
-     */
-    @Getter
-    public static class PagedListResponse {
-        private final List<ListResponse> content;
-        private final int pageNumber;
-        private final int pageSize;
-        private final long totalElements;
-        private final int totalPages;
+    public record CommentRequest(
+            @NotBlank(message = "댓글 내용을 입력하세요.") @Size(max = 2000, message = "댓글은 2000자 이하여야 합니다.") String comment
+    ) {}
 
-        public PagedListResponse(Page<ContentDto.SimpleResponse> page) {
-            this.content = page.getContent().stream()
-                    .map(ListResponse::new)
-                    .collect(Collectors.toList());
-            this.pageNumber = page.getNumber();
-            this.pageSize = page.getSize();
-            this.totalElements = page.getTotalElements();
-            this.totalPages = page.getTotalPages();
-        }
-    }
+    /** 매매일지 공유. hideAmounts: 수량·실현손익 금액을 빼고 수익률·R 배수만 공개 */
+    public record JournalShareRequest(
+            @NotBlank(message = "제목은 필수입니다.") @Size(max = 200) String title,
+            String body,
+            boolean hideAmounts
+    ) {}
 
-
-    /**
-     * [GET] /api/contents/{contentId} (게시글 상세 응답)
-     */
-    @Getter
-    public static class DetailResponse {
-        private final Long id;
-        private final ContentCategory category;
-        private final String title;
-        private final String contentBody;
-        private final String authorEmail;
-        private final Integer viewCount;
-        private final LocalDateTime createdAt;
-        private final LocalDateTime updatedAt;
-        private final List<CommentApiDto.Response> comments; // (중요) 댓글 목록
-
-        public DetailResponse(ContentDto.DetailResponse detail) {
-            this.id = detail.getId();
-            this.category = detail.getCategory();
-            this.title = detail.getTitle();
-            this.contentBody = detail.getContentBody();
-            this.authorEmail = detail.getAuthorEmail();
-            this.viewCount = detail.getViewCount();
-            this.createdAt = detail.getCreatedAt();
-            this.updatedAt = detail.getUpdatedAt();
-            this.comments = detail.getComments().stream()
-                    .map(CommentApiDto.Response::new)
-                    .collect(Collectors.toList());
-        }
-    }
+    /** 전략 공유. backtestRequestId: 이 전략(현재 설정)으로 실행한 백테스트 결과를 성과로 첨부 (선택) */
+    public record StrategyShareRequest(
+            @NotBlank(message = "제목은 필수입니다.") @Size(max = 200) String title,
+            String body,
+            String backtestRequestId
+    ) {}
 }

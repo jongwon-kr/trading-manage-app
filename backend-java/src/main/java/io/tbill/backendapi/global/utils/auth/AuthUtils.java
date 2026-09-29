@@ -31,4 +31,11 @@ public class AuthUtils {
 
         return name;
     }
+
+    /** 현재 사용자가 관리자(ROLE_ADMIN)인지. 인증 정보가 없으면 false */
+    public static boolean isAdmin() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null && authentication.isAuthenticated()
+                && authentication.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+    }
 }

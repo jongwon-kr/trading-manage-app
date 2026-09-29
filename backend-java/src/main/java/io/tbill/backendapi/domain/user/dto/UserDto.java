@@ -40,11 +40,13 @@ public class UserDto {
         private final Long id;
         private final String username;
         private final String email;
+        private final String role;
 
         public UserInfo(User user) {
             this.id = user.getId();
             this.username = user.getUsername();
             this.email = user.getEmail();
+            this.role = user.getRole() != null ? user.getRole().name() : "USER";
         }
 
         // 정적 팩토리 메서드

@@ -4,10 +4,11 @@ import { Outlet, useLocation } from "react-router-dom"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { AppSidebar } from "./app-sidebar"
-import { Bell, Search } from "lucide-react"
+import { Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { headerTitleFor } from "./nav-items"
 import { ThemeToggle } from "./ThemeToggle"
+import { NotificationBell } from "@/components/community/NotificationBell"
 import { RealtimeStatusBadge } from "./RealtimeStatusBadge"
 import { SymbolSearchDialog } from "@/components/market/SymbolSearchDialog"
 
@@ -53,10 +54,7 @@ export function MainLayout() {
                 <kbd className="hidden md:inline rounded border bg-muted px-1.5 text-[10px]">Ctrl K</kbd>
               </Button>
               <ThemeToggle />
-              <Button variant="ghost" size="sm" className="relative">
-                <Bell className="h-4 w-4" />
-                <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full"></span>
-              </Button>
+              <NotificationBell />
             </div>
           </header>
 

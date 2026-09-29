@@ -1,12 +1,14 @@
 """시장 국면 팩터: 지수 추세, 변동성 국면, 시장 폭·심리.
 
 지수 추세·변동성은 시계열(백테스트 가능), 시장 폭·심리는 당일 스냅샷만 있어 라이브 점수에서만 쓴다.
+기간·밴드·가중치는 설정(cfg, 기본값 = 모델 v1)에서 읽는다.
 """
 import pandas as pd
 
 from app.analysis import indicators as ind
-from app.analysis.scoring.primitives import Factor, clip_lin, interp
-from app.analysis.scoring.weights import REGIME_FACTORS
+from app.analysis.model.config import StrategyConfig, default_config
+from app.analysis.scoring.build import band_score, is_active, make_factor
+from app.analysis.scoring.primitives import Factor
 
 
 def _last(s: pd.Series | None) -> float | None:
@@ -15,60 +17,75 @@ def _last(s: pd.Series | None) -> float | None:
     return round(float(s.iloc[-1]), 6)
 
 
-def index_trend(index_close: pd.Series) -> pd.Series:
-    ma50, ma200 = ind.sma(index_close, 50), ind.sma(index_close, 200)
-    parts = pd.concat([clip_lin(index_close / ma50 - 1, 0.05), clip_lin(ma50 / ma200 - 1, 0.05)], axis=1)
-    # MA200 이 없는 기간은 MA50 항목만 사용
-    return parts.mean(axis=1, skipna=True).where(parts.iloc[:, 0].notna())
-
-
-def vix_band(vix: pd.Series) -> pd.Series:
-    return interp(vix, [12, 16, 20, 28, 40], [0.6, 0.3, 0, -0.6, -1])
-
-
-def realized_vol_band(index_close: pd.Series, periods_per_year: int) -> pd.Series:
-    """지수 20일 실현변동성이 최근 1년 중 어느 백분위인지 → 높을수록 위험회피"""
-    pct = ind.rolling_pct_rank(ind.realized_vol(index_close, 20, periods_per_year), 252, min_periods=120)
-    return interp(pct, [0.2, 0.5, 0.8, 0.95], [0.4, 0, -0.5, -1])
-
-
 def regime_factors(market: str, index_close: pd.Series, index_name: str, vix_close: pd.Series | None = None,
-                   breadth: float | None = None, fear_greed: int | None = None) -> list[Factor]:
+                   breadth: float | None = None, fear_greed: int | None = None,
+                   cfg: StrategyConfig | None = None) -> list[Factor]:
     """market: KR_STOCK | US_STOCK | CRYPTO
     breadth: 상승 종목 비율(0~1, 당일). fear_greed: 코인 공포탐욕지수(0~100, 당일)."""
-    trend = index_trend(index_close)
-    ma50, ma200 = ind.sma(index_close, 50), ind.sma(index_close, 200)
+    cfg = cfg or default_config()
+    out = []
+    if is_active(cfg, "index_trend"):
+        out.append(_index_trend(index_close, index_name, cfg))
+    if is_active(cfg, "volatility_regime"):
+        out.append(_volatility(market, index_close, vix_close, cfg))
+    if is_active(cfg, "breadth_sentiment"):
+        out.append(_breadth_sentiment(market, breadth, fear_greed, cfg))
+    return out
+
+
+def _index_trend(index_close: pd.Series, index_name: str, cfg: StrategyConfig) -> Factor:
+    k = "index_trend"
+    fast, slow = ind.sma(index_close, cfg.iparam(k, "fast")), ind.sma(index_close, cfg.iparam(k, "slow"))
+    x1, x2 = index_close / fast - 1, fast / slow - 1
+    parts = pd.concat([band_score(cfg, k, "priceVsFast", x1), band_score(cfg, k, "fastVsSlow", x2)], axis=1)
+    # 장기 이동평균이 없는 기간은 첫 항목만 사용
+    trend = parts.mean(axis=1, skipna=True).where(parts.iloc[:, 0].notna())
+    raw = {"index": index_name, "close": _last(index_close), "maFast": _last(fast), "maSlow": _last(slow)}
+    return make_factor(cfg, k, trend, raw, {"priceVsFast": _last(x1), "fastVsSlow": _last(x2)},
+                       "" if _last(trend) is not None else "데이터 없음")
+
+
+def _volatility(market: str, index_close: pd.Series, vix_close: pd.Series | None, cfg: StrategyConfig) -> Factor:
+    k = "volatility_regime"
+    n, window = cfg.iparam(k, "rvPeriod"), cfg.iparam(k, "rankWindow")
+    periods = 365 if market == "CRYPTO" else 252
+    vix = vix_close.reindex(index_close.index).ffill() if vix_close is not None else None
+    rv = ind.realized_vol(index_close, n, periods)
+    rank = ind.rolling_pct_rank(rv, window, min_periods=min(120, window))
 
     if market == "US_STOCK":
-        vol = vix_band(vix_close.reindex(index_close.index).ffill()) if vix_close is not None else None
-        vol_raw = {"vix": _last(vix_close)}
+        vol = band_score(cfg, k, "vix", vix) if vix is not None else None
+        raw, band_x = {"vix": _last(vix_close)}, {"vix": _last(vix)}
     elif market == "KR_STOCK":
-        rv = realized_vol_band(index_close, 252)
-        if vix_close is not None:
-            vix = vix_band(vix_close.reindex(index_close.index).ffill())
-            vol = pd.concat([rv, vix], axis=1).mean(axis=1, skipna=True).where(rv.notna() | vix.notna())
+        rv_score = band_score(cfg, k, "realizedVolRank", rank)
+        if vix is not None:
+            vix_score = band_score(cfg, k, "vix", vix)
+            vol = pd.concat([rv_score, vix_score], axis=1).mean(axis=1, skipna=True).where(
+                rv_score.notna() | vix_score.notna())
         else:
-            vol = rv
-        vol_raw = {"realizedVol20": _last(ind.realized_vol(index_close, 20, 252)), "vix": _last(vix_close)}
+            vol = rv_score
+        raw = {"realizedVol": _last(rv), "realizedVolRank": _last(rank), "vix": _last(vix_close)}
+        band_x = {"realizedVolRank": _last(rank), "vix": _last(vix)}
     else:
-        vol = realized_vol_band(index_close, 365)
-        vol_raw = {"btcRealizedVol20": _last(ind.realized_vol(index_close, 20, 365))}
+        vol = band_score(cfg, k, "realizedVolRank", rank)
+        raw, band_x = {"realizedVol": _last(rv), "realizedVolRank": _last(rank)}, {"realizedVolRank": _last(rank)}
+    has = vol is not None and _last(vol) is not None
+    return make_factor(cfg, k, vol, raw, band_x, "" if has else "데이터 없음")
 
-    breadth_score = interp(breadth, [0.35, 0.5, 0.65], [-1, 0, 1]) if breadth is not None else None
+
+def _breadth_sentiment(market: str, breadth: float | None, fear_greed: int | None, cfg: StrategyConfig) -> Factor:
+    k = "breadth_sentiment"
+    breadth_score = band_score(cfg, k, "advanceRatio", breadth)
+    band_x: dict = {"advanceRatio": breadth}
     if market == "CRYPTO":
         # 공포탐욕지수는 역발상: 극단적 탐욕은 감점, 공포는 소폭 가점
-        fg_score = interp(fear_greed, [10, 25, 50, 75, 90], [0.5, 0.3, 0, -0.3, -0.6]) if fear_greed is not None else None
+        fg_score = band_score(cfg, k, "fearGreed", fear_greed)
+        band_x["fearGreed"] = fear_greed
         parts = [p for p in (breadth_score, fg_score) if p is not None]
         sentiment = sum(parts) / len(parts) if parts else None
+    elif market == "US_STOCK":
+        sentiment, band_x = None, {}  # 미국은 무료 breadth 소스가 없어 None → 재정규화
     else:
-        sentiment = breadth_score  # 미국은 무료 breadth 소스가 없어 None → 재정규화
-
-    raw = {
-        "index_trend": {"index": index_name, "close": _last(index_close), "ma50": _last(ma50), "ma200": _last(ma200)},
-        "volatility_regime": vol_raw,
-        "breadth_sentiment": {"advanceRatio": breadth, "fearGreed": fear_greed},
-    }
-    scores = {"index_trend": trend, "volatility_regime": vol, "breadth_sentiment": sentiment}
-    return [Factor(key=k, label=label, weight=w, score=scores[k], raw=raw[k],
-                   note="" if scores[k] is not None else "데이터 없음")
-            for k, (w, label) in REGIME_FACTORS.items()]
+        sentiment = breadth_score
+    raw = {"advanceRatio": breadth, "fearGreed": fear_greed}
+    return make_factor(cfg, k, sentiment, raw, band_x, "" if sentiment is not None else "데이터 없음")

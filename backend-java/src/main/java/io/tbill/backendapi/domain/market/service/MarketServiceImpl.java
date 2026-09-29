@@ -78,4 +78,27 @@ public class MarketServiceImpl implements MarketService {
     public MarketDto.MoversInfo getMovers(InstrumentMarket market, int limit) {
         return pythonMarketClient.getMovers(market, Math.min(Math.max(limit, 1), 30));
     }
+
+    @Override
+    public JsonNode getTrends(InstrumentMarket market) {
+        return pythonMarketClient.getTrends(market);
+    }
+
+    @Override
+    public JsonNode getTrendGroup(InstrumentMarket market, String kind, String groupId) {
+        if (!java.util.Set.of("industry", "theme", "sector").contains(kind)) {
+            throw MarketException.badRequest("kind 는 industry, theme, sector 중 하나여야 합니다.");
+        }
+        return pythonMarketClient.getTrendGroup(market, kind, groupId);
+    }
+
+    @Override
+    public JsonNode getBriefing(InstrumentMarket market, java.time.LocalDate date) {
+        return pythonMarketClient.getBriefing(market, date != null ? date.toString() : null);
+    }
+
+    @Override
+    public JsonNode getBriefingDates(InstrumentMarket market) {
+        return pythonMarketClient.getBriefingDates(market);
+    }
 }

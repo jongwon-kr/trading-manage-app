@@ -1,9 +1,13 @@
 package io.tbill.backendapi.global.exception;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -53,6 +57,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
     }
 
+    /** @PreAuthorize(hasRole('ADMIN')) 등 권한 부족. 없으면 아래 handleException 이 500 으로 응답한다. */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException e) {
+        log.warn("권한 없음: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse("FORBIDDEN", "권한이 없습니다."));
+    }
+
     /**
      * 잘못된 쿼리 파라미터(enum 값 오류 등)·필수 파라미터 누락은 400.
      * 없으면 아래 handleException 이 500 으로 응답한다.
@@ -72,7 +83,15 @@ public class GlobalExceptionHandler {
         // Content-Type 을 명시해 SSE 요청(Accept: text/event-stream)에서도 JSON 오류 본문을 쓸 수 있게 한다
         return ResponseEntity.status(e.getStatus())
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(new ErrorResponse(e.getCode(), e.getMessage()));
+                .body(new ErrorResponse(e.getCode(), e.getMessage(), e.getErrors()));
+    }
+
+    /** 요청 본문 JSON 이 깨졌거나 타입이 맞지 않는 경우 (없으면 500) */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleNotReadable(HttpMessageNotReadableException e) {
+        log.warn("읽을 수 없는 요청 본문: {}", e.getMostSpecificCause().getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("BAD_REQUEST", "요청 본문 형식이 올바르지 않습니다."));
     }
 
     /**
@@ -106,5 +125,10 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }
 
-    public record ErrorResponse(String code, String message) {}
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record ErrorResponse(String code, String message, JsonNode errors) {
+        public ErrorResponse(String code, String message) {
+            this(code, message, null);
+        }
+    }
 }

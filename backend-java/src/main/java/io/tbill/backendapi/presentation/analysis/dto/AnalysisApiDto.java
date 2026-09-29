@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -47,6 +48,7 @@ public class AnalysisApiDto {
 
     /**
      * POST /backtest 요청 본문. from/to 생략 시 최근 3년.
+     * presetId(내 전략) 또는 config(저장 전 설정)로 분석 방법을 바꿀 수 있다 (둘 중 하나만).
      */
     public record BacktestRequest(
             @NotNull(message = "market 은 필수입니다.") InstrumentMarket market,
@@ -60,7 +62,9 @@ public class AnalysisApiDto {
             @DecimalMin("0") Double feeBps,
             @DecimalMin("0") Double taxBps,
             @DecimalMin("0") Double slippageBps,
-            @Positive Double initialCapital
+            @Positive Double initialCapital,
+            Long presetId,
+            JsonNode config
     ) {
         /** 지정한 값만 Python 으로 전달 (나머지는 시장별 기본값) */
         public Map<String, Object> toParameters() {
@@ -82,7 +86,7 @@ public class AnalysisApiDto {
     }
 
     /**
-     * POST /strategy 요청 본문
+     * POST /strategy 요청 본문. presetId(내 전략) 또는 config(저장 전 설정)로 분석 방법을 바꿀 수 있다 (둘 중 하나만).
      */
     public record StrategyRequest(
             @NotNull(message = "market 은 필수입니다.") InstrumentMarket market,
@@ -90,7 +94,9 @@ public class AnalysisApiDto {
             String interval,
             @Positive(message = "accountEquity 는 양수여야 합니다.") Double accountEquity,
             @DecimalMin(value = "0.001", message = "riskPct 는 0.1% 이상이어야 합니다.")
-            @DecimalMax(value = "0.05", message = "riskPct 는 5% 이하여야 합니다.") Double riskPct
+            @DecimalMax(value = "0.05", message = "riskPct 는 5% 이하여야 합니다.") Double riskPct,
+            Long presetId,
+            JsonNode config
     ) {
         /** Python 으로 전달할 옵션 (AnalysisRequest.parameters JSON) */
         public Map<String, Object> toParameters() {

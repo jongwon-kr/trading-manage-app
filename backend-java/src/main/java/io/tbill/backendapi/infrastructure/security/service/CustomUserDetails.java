@@ -31,7 +31,8 @@ public class CustomUserDetails implements UserDetails {
     // (권한) 여기서는 단순 "ROLE_USER"를 반환 (DB에 Role 엔티티가 있다면 수정)
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singletonList(() -> "ROLE_USER");
+        String role = user.getRole() != null ? user.getRole().name() : "USER";
+        return Collections.singletonList(() -> "ROLE_" + role);
     }
 
     // (계정 만료, 잠금 등은 여기서 관리)

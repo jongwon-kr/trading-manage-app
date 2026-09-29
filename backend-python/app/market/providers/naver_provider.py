@@ -5,6 +5,7 @@ from app.market.providers.base import Provider, parse_korean_amount, parse_numbe
 
 _POLL = "https://polling.finance.naver.com/api/realtime/domestic"
 _MOBILE = "https://m.stock.naver.com/api/stock"
+_MOBILE_LIST = "https://m.stock.naver.com/api/stocks"  # 업종·테마 목록
 _CHUNK = 20
 
 
@@ -32,6 +33,28 @@ class NaverProvider(Provider):
         data = self.get_json(f"{_POLL}/index/{','.join(codes)}")
         return [self._to_quote(d, d["itemCode"], d.get("stockName"), key_prefix="INDEX")
                 for d in data.get("datas", [])]
+
+    def groups(self, kind: str) -> list[dict]:
+        """업종(kind=industry)·테마(kind=theme) 당일 등락. [{no, name, changeRate(비율), rise, fall, steady, total}]"""
+        out, page = [], 1
+        while page <= 5:
+            data = self.get_json(f"{_MOBILE_LIST}/{kind}", page=page, pageSize=100)
+            rows = data.get("groups", [])
+            out += [{"no": g["no"], "name": g["name"], "changeRate": (parse_number(g.get("changeRate")) or 0.0) / 100,
+                     "rise": g.get("riseCount", 0), "fall": g.get("fallCount", 0), "steady": g.get("steadyCount", 0),
+                     "total": g.get("totalCount", 0)} for g in rows]
+            if len(out) >= data.get("totalCount", 0) or len(rows) < 100:
+                break
+            page += 1
+        return out
+
+    def group_stocks(self, kind: str, no: int, size: int = 30) -> list[dict]:
+        """업종·테마 구성 종목 (당일 등락률 순). tradeValue·marketCap 은 원 단위"""
+        data = self.get_json(f"{_MOBILE_LIST}/{kind}/{no}", page=1, pageSize=size)
+        return [{"code": s["itemCode"], "name": s.get("stockName"), "exchange": "KOSDAQ" if s.get("sosok") == "1" else "KOSPI",
+                 "price": _field(s, "closePrice"), "changeRate": (parse_number(s.get("fluctuationsRatio")) or 0.0) / 100,
+                 "tradeValue": _field(s, "accumulatedTradingValue"), "marketCap": _field(s, "marketValue")}
+                for s in data.get("stocks", [])]
 
     def _to_quote(self, d: dict, code: str, name: str | None, key_prefix: str | None = None) -> Quote:
         price = _field(d, "closePrice")

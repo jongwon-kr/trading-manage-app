@@ -16,8 +16,17 @@ const named = <T extends string>(loader: () => Promise<Record<T, React.Component
 
 const Dashboard = named(() => import("@/pages/Dashboard"), "Dashboard");
 const MarketOverview = named(() => import("@/pages/MarketOverview"), "MarketOverview");
+const Trends = named(() => import("@/pages/Trends"), "Trends");
+const Community = named(() => import("@/pages/Community"), "Community");
+const CommunityPost = named(() => import("@/pages/CommunityPost"), "CommunityPost");
+const CommunityWrite = named(() => import("@/pages/CommunityWrite"), "CommunityWrite");
+const UserProfile = named(() => import("@/pages/UserProfile"), "UserProfile");
+const AdminReports = named(() => import("@/pages/AdminReports"), "AdminReports");
 const SymbolDetail = named(() => import("@/pages/SymbolDetail"), "SymbolDetail");
 const Analysis = named(() => import("@/pages/Analysis"), "Analysis");
+const Methodology = named(() => import("@/pages/Methodology"), "Methodology");
+const StrategyList = named(() => import("@/pages/StrategyList"), "StrategyList");
+const StrategyEditor = named(() => import("@/pages/StrategyEditor"), "StrategyEditor");
 const Backtest = named(() => import("@/pages/Backtest"), "Backtest");
 const Watchlist = named(() => import("@/pages/Watchlist"), "Watchlist");
 const Journal = named(() => import("@/pages/Journal"), "Journal");
@@ -49,11 +58,20 @@ const AppContent = () => {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="market" element={<MarketOverview />} />
         <Route path="market/:market/:symbol" element={<SymbolDetail />} />
+        <Route path="trends" element={<Trends />} />
         <Route path="watchlist" element={<Watchlist />} />
         <Route path="analysis" element={<Analysis />} />
+        <Route path="analysis/methodology" element={<Methodology />} />
+        <Route path="strategies" element={<StrategyList />} />
+        <Route path="strategies/:id" element={<StrategyEditor />} />
         <Route path="backtest" element={<Backtest />} />
         <Route path="journal" element={<Journal />} />
         <Route path="performance" element={<Performance />} />
+        <Route path="community" element={<Community />} />
+        <Route path="community/write" element={<CommunityWrite />} />
+        <Route path="community/:id" element={<CommunityPost />} />
+        <Route path="users/:username" element={<UserProfile />} />
+        <Route path="admin/reports" element={<AdminReports />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

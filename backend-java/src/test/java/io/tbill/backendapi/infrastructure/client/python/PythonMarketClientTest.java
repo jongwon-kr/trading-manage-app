@@ -114,4 +114,37 @@ class PythonMarketClientTest {
         assertThatThrownBy(() -> client.getOverview())
                 .satisfies(e -> assertThat(((MarketException) e).getStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
     }
+
+    @Test
+    @DisplayName("브리핑: 날짜가 있으면 쿼리로 전달, 동향 그룹은 경로로 전달")
+    void briefingAndTrendGroup() {
+        server.expect(requestTo("http://python/internal/v1/briefing?market=KR_STOCK&date=2026-09-28"))
+                .andRespond(withSuccess("{\"headline\":\"h\"}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo("http://python/internal/v1/trends/groups/KR_STOCK/industry/278"))
+                .andRespond(withSuccess("{\"stocks\":[]}", MediaType.APPLICATION_JSON));
+
+        assertThat(client.getBriefing(InstrumentMarket.KR_STOCK, "2026-09-28").get("headline").asText()).isEqualTo("h");
+        assertThat(client.getTrendGroup(InstrumentMarket.KR_STOCK, "industry", "278").has("stocks")).isTrue();
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("전략 설정 검증 실패(422)는 400 MarketException 으로, 필드 오류 목록을 담는다")
+    void validateConfigErrors() throws Exception {
+        server.expect(requestTo("http://python/internal/v1/analysis/config/validate"))
+                .andExpect(method(org.springframework.http.HttpMethod.POST))
+                .andExpect(content().json("{\"signal\":{\"buy\":10}}"))
+                .andRespond(withStatus(HttpStatus.UNPROCESSABLE_ENTITY).contentType(MediaType.APPLICATION_JSON).body("""
+                        {"code":"STRATEGY_CONFIG_INVALID","message":"전략 설정 오류","errors":[{"path":"signal","msg":"순서"}]}
+                        """));
+
+        assertThatThrownBy(() -> client.validateStrategyConfig(new ObjectMapper().readTree("{\"signal\":{\"buy\":10}}")))
+                .isInstanceOf(MarketException.class)
+                .satisfies(e -> {
+                    MarketException me = (MarketException) e;
+                    assertThat(me.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(me.getCode()).isEqualTo("STRATEGY_CONFIG_INVALID");
+                    assertThat(me.getErrors().get(0).get("path").asText()).isEqualTo("signal");
+                });
+    }
 }

@@ -41,6 +41,7 @@ class Factor:
     raw: dict = field(default_factory=dict)  # 표시용 원시값 (마지막 시점)
     sub_group: str | None = None
     note: str = ""
+    explain: dict = field(default_factory=dict)  # 화면 설명용 (설명·공식·입력값·밴드·가중치 경로)
 
     def value_at(self, i: int = -1) -> float | None:
         if self.score is None:
