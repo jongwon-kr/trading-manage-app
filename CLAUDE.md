@@ -91,7 +91,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## Overview
 
-`tbill` — market data + charts (KR/US stocks, Upbit crypto) + a quantified strategy score/backtest + a trading journal. Three deployables in one repo, glued by HTTP (market data), Kafka (analysis jobs) and Redis (cache, results, pub/sub):
+`tbill` — market data + charts (KR/US stocks, Upbit crypto) + a quantified, explainable strategy score/backtest that users can customize ("내 전략"), market trends/briefing, a trading journal and a community. Three deployables in one repo, glued by HTTP (market data), Kafka (analysis jobs) and Redis (cache, results, pub/sub):
 
 - `backend-java/` — Spring Boot 3.3.1 / Java 21 REST API (`io.tbill.backendapi`). Owns all persisted data (PostgreSQL/JPA) and JWT auth. Port 8080.
 - `backend-python/` — one package (`app/`), three entrypoints: `app.api.main` (internal FastAPI market-data API, port 8000, `X-Internal-Token`), `app.worker.main` (Kafka analysis consumer), `app.stream.main` (Upbit realtime, single replica).
@@ -165,7 +165,19 @@ Java never calls Python over HTTP for analysis. The handoff is fire-and-forget o
 3. `AnalysisHandler` writes `RUNNING` (backtests add `progress`), then `SUCCESS` or `FAILED` — even for unparseable requests — to Redis at `analysis:{requestId}` (1h TTL, backtests 24h). Payloads are camelCase with `schemaVersion: 2`.
 4. The frontend polls `GET /api/v1/analysis/result/{id}` via `useAnalysisJob`. A cache miss returns `{"status": "PROCESSING"}`; a hit returns Python's JSON verbatim (Java deserializes to `Object` and re-emits, so the Python schema is the API contract — TS mirror in `frontend/src/types/strategy.types.ts`).
 
-The strategy model (`app/analysis/scoring/`, constants in `weights.py`, `MODEL_VERSION`) scores factors in [-1, 1], averages them per group over *available* factors, re-weights groups by coverage, and maps to `score = 50 + 50·C`. Invariant (tested): `50 + Σ factor.contribution == score`. Every factor is a pandas `Series → Series` function so the backtest (`app/analysis/backtest.py`) reuses exactly the live factors; fundamentals and breadth are excluded from backtests because there is no point-in-time history. Indicator formulas (Wilder RSI/ATR, population-σ Bollinger, SMA-seeded EMA) are duplicated in `frontend/src/lib/indicators.ts` for chart overlays — both are tested against the same StockCharts RSI fixture.
+The strategy model (`app/analysis/scoring/`, `MODEL_VERSION` in `weights.py`) scores factors in [-1, 1], averages them per group over *available* factors, re-weights groups by coverage, and maps to `score = 50 + 50·C`. Invariant (tested): `50 + Σ factor.contribution == score`. Every factor is a pandas `Series → Series` function so the backtest (`app/analysis/backtest.py`) reuses exactly the live factors; fundamentals and breadth are excluded from backtests because there is no point-in-time history. Indicator formulas (Wilder RSI/ATR, population-σ Bollinger, SMA-seeded EMA) are duplicated in `frontend/src/lib/indicators.ts` for chart overlays — both are tested against the same StockCharts RSI fixture.
+
+The model is **catalog + config**: `app/analysis/model/catalog.py` holds every factor's description, formula, params (default/min/max) and bands (points `xs→ys`, linear interpolation, clamped ends — `clip_lin(x,s)` is the band `[-s,s]→[-1,1]`); `model/config.py` `StrategyConfig` holds everything a user can change (group/subgroup/factor weights, enabled flags, params, bands, signal thresholds, regime gate, risk multiples). `parse_config(partial)` deep-merges onto the defaults and validates (`ConfigError` 422 with `errors[{path,msg}]`); the default config reproduces v1 exactly. Factor builders take `cfg` and emit `explain` (inputs, band position, weight path) — result `schemaVersion: 3`. The strategy cache key and results carry `config_hash(cfg)`; community strategy shares only accept a backtest whose `config.hash` equals the preset's `configHash`. The validation rules are duplicated in `frontend/src/lib/strategy-config.ts` and `interp` in `frontend/src/lib/bands.ts`.
+
+User presets (`domain/strategy`, `/api/v1/strategies`) store the Python-normalized full config JSON + hash; Java calls `POST /internal/v1/analysis/config/validate` on save. Analysis/backtest requests accept `presetId` (auth required, owner only) or inline `config`; `AnalysisController.applyStrategyConfig` resolves them into `parameters.config` so Python stays stateless.
+
+### Market trends & briefing
+
+`app/market/trends.py` computes sector rotation from sector ETFs (`app/market/sectors.py`: 19 KR, 11 US SPDR; one `yf.download` batch, FDR fallback): 1D/1W/1M/3M returns, excess vs benchmark, RRG-style quadrant (RS-ratio vs its 50-day mean, 10-day momentum) and a leader score. KR also gets Naver industry/theme day moves (`naver_provider.groups/group_stocks`), crypto gets CoinGecko categories (±50% day moves dropped as outliers) and Upbit trade concentration. `app/market/briefing.py` turns overview + regime + trends + movers into deterministic Korean sentences with `evidence`; templates live in the `T` dict and are pinned by tests. Snapshots `briefing:{market}:{date}` (30 days) + zset `briefing:dates:{market}`. Java passes these through as `JsonNode` (`/api/v1/market/trends|briefing`).
+
+### Community
+
+`domain/content` (posts, comments, likes, journal/strategy shares and import via `ShareService`) and `domain/social` (follow, notifications, reports). Responses expose `username` only (`AuthorDirectory`), never emails. Post bodies and journal reasoning HTML are cleaned server-side with jsoup (`global/utils/HtmlSanitizer`) and rendered only through `components/common/SafeHtml` (DOMPurify). Shares store a JSON snapshot in `content.attachment` (journal `hideAmounts` strips quantity/PnL server-side). Notifications are written by `@TransactionalEventListener` + `REQUIRES_NEW` from `CommunityEvents`; self-actions are skipped; the frontend polls `unread-count`. Hidden posts are visible only to their author (`ContentSpecs.visibleTo`). Admin endpoints (`presentation/admin`) use `@PreAuthorize("hasRole('ADMIN')")`; `users.role` drives `CustomUserDetails` authorities and is set by SQL.
 
 Two contracts must be kept in sync manually across languages:
 
@@ -177,7 +189,7 @@ Java serializes with Spring Kafka's `JsonSerializer` (camelCase, `spring.json.tr
 
 ### Java layering
 
-Package structure is a deliberate three-layer split, repeated per domain (`journal`, `user`, `auth`, `content`, `analysis`, `market`, `watchlist`):
+Package structure is a deliberate three-layer split, repeated per domain (`journal`, `user`, `auth`, `content`, `social`, `strategy`, `analysis`, `market`, `watchlist`):
 
 - `presentation/<domain>/` — `Controller` + `<Domain>ApiDto` (the HTTP wire shape: `CreateRequest`, `JournalResponse`, `PagedResponse<T>`).
 - `domain/<domain>/` — `entity`, `repository`, `service` (interface + `Impl`), and `<Domain>Dto` (the service-layer shape: `CreateCommand`, `UpdateCommand`, `SearchCondition`, `JournalInfo`, `Statistics`).
@@ -212,15 +224,18 @@ Python config is a single pydantic-settings `Settings` in `app/config.py` (env v
 - pykrx cross-sectional calls (`get_market_fundamental(date, market="ALL")`, market-wide OHLCV) now require a KRX login and return empty; only per-ticker OHLCV works. KR fundamentals therefore come from Naver (`naver_provider.py`) and are scored with absolute bands, not sector percentiles. Naver and yfinance are unofficial — when one breaks, the fallback chain/circuit breaker keeps the API up; upgrade the library (loose pins in `requirements.txt`).
 - The root `.gitignore` (Python template) ignores `lib/`; `!frontend/src/lib/` re-includes the frontend modules. Check `git check-ignore` before adding another `lib` directory.
 - Schema changes need a manual SQL in `backend-java/src/main/resources/db/manual/` for prod (`ddl-auto: validate`); local `update` never alters existing column types.
-- `global/common/ApiResponse.java`, `global/exception/ErrorCode.java`, `global/exception/CustomException.java`, and `global/exception/TbillExceptionHandler.java` are empty placeholder classes. Error responses actually come from `GlobalExceptionHandler`'s `ErrorResponse` record.
+- `global/common/ApiResponse.java`, `global/exception/ErrorCode.java`, `global/exception/CustomException.java`, and `global/exception/TbillExceptionHandler.java` are empty placeholder classes. Error responses actually come from `GlobalExceptionHandler`'s `ErrorResponse` record (`{code, message, errors?}`); throw `MarketException`/`CommunityException` (code + HTTP status) for API errors.
 - Several security classes are duplicated with only one wired in: `JwtProvider` (used) vs `JwtTokenProvider`, `CustomUserDetailsService` vs `UserDetailsServiceImpl`. Check `SecurityConfig` before extending either.
 - `infrastructure/kafka/consumer/ExampleEventProducer.java` and `infrastructure/kafka/producer/ExampleEventConsumer.java` have their producer/consumer roles swapped relative to their packages.
 - `AuthUtils.getCurrentUserEmail()` now throws `AuthenticationCredentialsNotFoundException` instead of falling back to `"test@example.com"`. `GlobalExceptionHandler` has an `AuthenticationException` handler that maps it to 401 — that handler is load-bearing, because `@RestControllerAdvice` intercepts before `ExceptionTranslationFilter`, so without it the generic `Exception` handler would return 500.
 - `frontend/` has both `package-lock.json` and `pnpm-lock.yaml`. Vite is aliased to `rolldown-vite` via `overrides`.
 - `frontend/src/types/trading.ts` and `trade.types.ts` are unused leftovers. `mock/mock-performance-data.ts` still backs the Performance page.
-- `GlobalExceptionHandler` has no `HttpMessageNotReadableException` handler, so a malformed request body returns 500 rather than 400.
 - **Windows + non-ASCII username breaks `./gradlew test`** with `ClassNotFoundException: GradleWorkerMain`. `sun.jnu.encoding` is MS949 and the worker jar lives under `C:\Users\<Hangul>\.gradle\`, which the JVM cannot open. This is why tests had never run in this tree. Fix: enable Windows' "Beta: Use Unicode UTF-8 for worldwide language support" and reboot; workaround: an ASCII `GRADLE_USER_HOME`. The same encoding issue makes `curl` with a Korean JSON body fail server-side as `Invalid UTF-8 start byte`, and Git-Bash curl sends Korean query strings in CP949 (search returns `[]`) — use ASCII, `--data-binary @file.json`, or a Python HTTP client. Windows PowerShell 5.1 `Invoke-RestMethod` mis-decodes charset-less JSON; `test_integration.ps1` decodes bytes as UTF-8.
 - `Journal.CreateRequest.reasoning` is a `{markdown, images}` object, not a string. Sending a bare string yields 500 (see the missing handler above).
+- Hibernate 6 generates CHECK constraints for `@Enumerated(STRING)` columns, and `ddl-auto: update` never updates them. Adding an enum value to an existing column (e.g. `ContentCategory`) needs a manual SQL that drops/recreates the constraint (see `V5__community.sql`).
+- `@DataJpaTest` without `@ActiveProfiles("test")` starts with the `local` profile and, with `Replace.NONE`, connects to the real dev Postgres. Always add the annotation.
+- `PythonClientConfig` pins the JDK `HttpClient` to HTTP/1.1: the default HTTP/2 client sends an h2c upgrade on plain HTTP and uvicorn drops the POST body.
+- JPA `Sort.Order.nullsLast()` is ignored by Spring Data's Criteria path; community performance sorts filter out rows without the metric instead (`ContentSpecs.hasMetric`).
 - Kafka can fail to start with `InconsistentClusterIdException` when the `kafka_data` and `zookeeper_data` volumes disagree. `docker compose down && docker volume rm trading-manage-app_kafka_data && docker compose up -d` — the volume holds no topic data worth keeping.
 - `frontend/tsconfig.app.tsbuildinfo` is a build artifact that is tracked in git, so it shows as modified after every build.
 
