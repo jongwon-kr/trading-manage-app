@@ -14,8 +14,95 @@
 
 ---
 
+## 포트폴리오 요약
+
+> **개인 프로젝트 · 2025.11 ~ 2026.09 · 기획·백엔드·데이터·프론트 전 영역**
+>
+> 무료 데이터만으로 국내·미국 주식과 코인의 시세·차트를 제공하고, 정량 전략 점수를 **계산 근거까지 보여 주며**, 사용자가 분석 방법을 직접 만들어 백테스트로 검증하고 커뮤니티에 공유하는 서비스.
+
+| 설명 가능한 분석 | 내 전략 vs 기본 모델 백테스트 | 섹터 로테이션 |
+|---|---|---|
+| ![팩터 계산 근거](docs/images/factor-explain.png) | ![비교 백테스트](docs/images/backtest-compare.png) | ![섹터 로테이션](docs/images/trends-sectors.png) |
+
+### 기술 스택
+
+| 영역 | 사용 기술 |
+|---|---|
+| 백엔드 (공개 API) | Java 21, Spring Boot 3.3 (Web · Security · Data JPA · Kafka · Data Redis · Validation), JWT, SSE |
+| 데이터 저장·메시징 | PostgreSQL 15, Redis (캐시 · 분석 결과 · pub/sub · 리프레시 토큰), Apache Kafka |
+| 시세·분석 서비스 | Python 3.14, FastAPI, pandas/numpy, confluent-kafka, Upbit WebSocket |
+| 프론트엔드 | React 19, TypeScript, Vite, Redux Toolkit (RTK Query), shadcn/ui, lightweight-charts, recharts |
+| 테스트·운영 | JUnit5 · Mockito · `@DataJpaTest`(H2) · MockRestServiceServer, pytest · fakeredis · respx, vitest, Playwright, Docker Compose, Kubernetes 매니페스트 |
+
+### 아키텍처
+
+```mermaid
+flowchart LR
+    B["브라우저<br/>React"]
+    J["backend-java<br/>Spring Boot · 유일한 공개 API<br/>JWT · 권한 · SSE 허브"]
+    PG[("PostgreSQL<br/>회원 · 일지 · 전략 · 커뮤니티")]
+    PA["py-api<br/>FastAPI 시세 내부 API"]
+    K[["Kafka<br/>분석 요청 토픽"]]
+    W["py-worker<br/>점수 모델 · 백테스트"]
+    S["py-stream<br/>Upbit WebSocket"]
+    R[("Redis<br/>캐시 · 분석 결과 · pub/sub")]
+    EXT["무료 데이터 소스<br/>FDR · pykrx · 네이버 · yfinance · Upbit · CoinGecko"]
+
+    B -->|"REST (Bearer)"| J
+    J -->|"SSE 코인 시세"| B
+    J --- PG
+    J -->|"동기 HTTP · X-Internal-Token"| PA
+    J -->|"분석·백테스트 요청 (fire-and-forget)"| K
+    K --> W
+    W -->|"analysis:{id} 결과 기록"| R
+    J -->|"결과 폴링 조회"| R
+    S -->|"PUBLISH market:tick:*"| R
+    R -->|"패턴 구독"| J
+    PA --> EXT
+    W --> EXT
+    PA --- R
+```
+
+상세한 데이터 흐름은 [구성](#구성) 절에 있다.
+
+### 백엔드 설계 포인트
+
+| 주제 | 내용 |
+|---|---|
+| 비동기 분석 파이프라인 | 분석·백테스트는 HTTP 로 기다리지 않는다. Java 가 `requestId` 를 발급해 Kafka 에 넣고 바로 201 을 돌려주면, worker 가 Redis `analysis:{id}` 에 `RUNNING → SUCCESS/FAILED` 를 기록하고 프론트가 폴링한다. 파싱할 수 없는 요청도 반드시 `FAILED` 를 남겨 무한 대기가 없다. ([AnalysisController](backend-java/src/main/java/io/tbill/backendapi/presentation/analysis/controller/AnalysisController.java), [handler.py](backend-python/app/worker/handler.py)) |
+| 공개 API 는 Java 하나 | 인증·권한·소유권 검사를 한곳에서 한다. Python 은 내부 토큰으로만 호출되고 상태가 없다. 사용자 전략은 Java 가 `presetId` 를 소유권 확인 후 설정 JSON 으로 풀어 Kafka 파라미터에 싣는다. |
+| 도메인별 3계층 | `presentation / domain / infrastructure` 를 9개 도메인(일지·전략·시세·관심종목·커뮤니티·소셜 등)에 반복한다. 모든 조회는 이메일로 소유 범위를 좁히고, 커뮤니티 응답은 이메일 대신 username 만 내보낸다. ([AuthorDirectory](backend-java/src/main/java/io/tbill/backendapi/domain/content/service/AuthorDirectory.java)) |
+| 캐시와 장애 격리 | 시세 캐시는 Redis 한곳(single-flight 락, 봉 주기·장 운영 시간별 TTL). 비공식 무료 소스는 공급자 폴백 체인 + 호출 간격 제한 + 서킷브레이커(60초 5회 실패 시 5분 차단)로 감싼다. ([cache.py](backend-python/app/core/cache.py), [providers/base.py](backend-python/app/market/providers/base.py)) |
+| 실시간 시세 | Upbit 전 종목을 WebSocket 하나로 받아 초당 1건으로 합친 뒤 Redis pub/sub → Java `SseEmitter` 허브로 중계한다. 브라우저는 탭당 연결 1개, 끊긴 연결은 오류 로그 없이 정리한다. ([MarketStreamService](backend-java/src/main/java/io/tbill/backendapi/domain/market/service/MarketStreamService.java)) |
+| 이벤트 기반 알림·보안 | 댓글·좋아요·팔로우 알림은 `@TransactionalEventListener`(커밋 후) + `REQUIRES_NEW` 로 저장해 본 작업과 격리한다. 사용자 HTML 은 서버 jsoup 과 화면 DOMPurify 로 이중 정화하고, 관리자 API 는 `@PreAuthorize("hasRole('ADMIN')")` 로 막는다. ([NotificationService](backend-java/src/main/java/io/tbill/backendapi/domain/social/service/NotificationService.java), [HtmlSanitizer](backend-java/src/main/java/io/tbill/backendapi/global/utils/HtmlSanitizer.java)) |
+
+### 문제 해결 사례
+
+| 문제 | 원인 | 해결 | 결과 |
+|---|---|---|---|
+| Java → Python POST 요청의 본문이 비어서 도착 | JDK `HttpClient` 기본값(HTTP/2)이 평문 연결에서 h2c 업그레이드 헤더를 보내고, uvicorn 이 업그레이드 요청의 본문을 버림 (소켓으로 재현: 응답 282B → 94B) | 내부 호출 클라이언트를 HTTP/1.1 로 고정 ([PythonClientConfig](backend-java/src/main/java/io/tbill/backendapi/infrastructure/client/python/PythonClientConfig.java)) | 전략 설정 검증 API 정상화, 오류 전달 회귀 테스트 추가 |
+| 인증·권한 실패가 500 으로 응답 | `@RestControllerAdvice` 가 Spring Security `ExceptionTranslationFilter` 보다 먼저 예외를 잡아 범용 핸들러로 떨어짐 | `AuthenticationException`→401, `AccessDeniedException`→403, 깨진 요청 본문→400 핸들러 추가 ([GlobalExceptionHandler](backend-java/src/main/java/io/tbill/backendapi/global/exception/GlobalExceptionHandler.java)) | 일반 사용자의 관리자 API 호출이 403 으로 응답 (E2E 확인) |
+| 새 게시판 카테고리 저장 시 제약 위반 | Hibernate 6 가 enum 컬럼에 만든 CHECK 제약을 `ddl-auto: update` 가 갱신하지 않음 | 제약을 다시 만드는 수동 마이그레이션 작성 ([V5__community.sql](backend-java/src/main/resources/db/manual/V5__community.sql)), 운영 스키마 절차 문서화 | 로컬·운영 스키마 차이 제거 |
+| 매매일지·게시글의 저장형 XSS | 에디터 HTML 을 그대로 `dangerouslySetInnerHTML` 로 렌더링 | 저장 시 jsoup Safelist 정화 + 렌더링 시 DOMPurify, 사용자 HTML 은 [SafeHtml](frontend/src/components/common/SafeHtml.tsx) 한 곳에서만 렌더링 | `<script>`·`onerror` 페이로드가 저장·실행되지 않음 (단위 테스트 + 브라우저 E2E) |
+| 분석 모델을 설정 기반으로 바꾸면서 점수 회귀 위험 | 하드코딩된 가중치·구간을 사용자 설정(가중치·기간·밴드·임계값)으로 분리하는 대규모 리팩터링 | 리팩터 전 출력을 골든 값으로 저장해 비교, 임의 설정에서 `50 + Σ기여도 = 점수` 불변식 검사 ([test_strategy_config.py](backend-python/tests/test_strategy_config.py)) | 12개 케이스 불일치 0, 임의 설정 24개에서 불변식 성립 |
+| 성과순 정렬에서 성과 없는 글이 맨 앞 | Spring Data 의 Criteria 정렬이 `Sort.Order.nullsLast()` 를 무시하고, PostgreSQL 은 내림차순에서 NULL 을 앞에 둠 | 성과순 정렬일 때 지표가 있는 행만 조회 ([ContentSpecs](backend-java/src/main/java/io/tbill/backendapi/domain/content/repository/ContentSpecs.java)) | H2 저장소 테스트로 고정 ([ContentRepositoryTest](backend-java/src/test/java/io/tbill/backendapi/domain/content/repository/ContentRepositoryTest.java)) |
+
+### 품질과 검증
+
+- **자동 테스트**: Java 87개 (Mockito 서비스·컨트롤러, `@DataJpaTest` H2 저장소, `MockRestServiceServer` 외부 호출) · Python 120개 (네트워크 없이 fakeredis·respx·저장한 응답 샘플) · 프론트 39개 (vitest)
+- **E2E**: 기능 단계마다 실제 서버(Java·Python·Kafka·Redis·PostgreSQL)를 띄우고 Playwright 로 API 와 화면을 끝까지 확인 — 권한(401/403/404), 중복(409), 검증 오류, 알림, 숨김 처리 등
+- **문서 자동화**: 아래 기능 설명의 스크린샷은 `npm run docs:screenshots` 한 번으로 데모 데이터를 만들고 다시 캡처한다
+- 스스로 찾은 한계와 남은 문제는 [알려진 문제](#알려진-문제)에 그대로 적어 두었다
+
+### 개발 방식
+
+요구사항 정의·설계 결정·검증은 직접 하고, 구현에는 AI 페어 프로그래밍 도구(Claude Code)를 활용했다. 커밋의 공동 작성자 표기가 이를 나타낸다.
+
+---
+
 ## 목차
 
+0. [포트폴리오 요약](#포트폴리오-요약)
 1. [기능과 사용 방법](#기능과-사용-방법)
 2. [로컬 실행](#로컬-실행)
 3. [구성](#구성)
